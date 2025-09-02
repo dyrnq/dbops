@@ -1,0 +1,15 @@
+solon:
+  app:
+    name: dbops
+  logging:
+    appender:
+      console:
+        level: DEBUG
+        enable: false
+        # -Dsolon.logging.appender.console.enable=true
+      file:
+        level: DEBUG
+        maxFileSize: "1 MB"
+        maxHistory: "7"
+        enable: false
+        # -Dsolon.logging.appender.console.enable=true
