@@ -276,7 +276,8 @@ public class SchemaToDoris implements Callable<Integer> {
                 !line.trim().startsWith("  KEY") &&
                 !line.trim().startsWith("PRIMARY KEY") &&
                 !line.trim().startsWith("UNIQUE KEY") &&
-                !line.trim().startsWith("KEY")) {
+                !line.trim().startsWith("KEY") &&
+                !line.trim().startsWith("CONSTRAINT")) {
                 cleanedLines.add(line);
             }
         }
@@ -362,17 +363,19 @@ public class SchemaToDoris implements Callable<Integer> {
         content = content.replaceAll("CHARACTER SET utf8mb4 COLLATE utf8_general_ci", "");
         content = content.replaceAll("CHARACTER SET utf8 COLLATE utf8_general_ci", "");
 
-        // Handle TIMESTAMP updates - remove ON UPDATE CURRENT_TIMESTAMP as it's not supported in Doris OLAP tables
-        // Only apply to datetime columns
-        content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+ON UPDATE CURRENT_TIMESTAMP(\\(\\d+\\))?", "$1");
-        content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+CURRENT_TIMESTAMP(\\(\\d+\\))?\\s+ON UPDATE CURRENT_TIMESTAMP(\\(\\d+\\))?", "$1 DEFAULT CURRENT_TIMESTAMP$2");
-        content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+NULL\\s+ON UPDATE CURRENT_TIMESTAMP(\\(\\d+\\))?", "$1 DEFAULT CURRENT_TIMESTAMP$2");
-
+        // 更彻底地处理 TIMESTAMP updates - 移除 ON UPDATE CURRENT_TIMESTAMP 及其变体
+        // 移除所有形式的 ON UPDATE CURRENT_TIMESTAMP，包括带参数和不带参数的
+        content = content.replaceAll("(?i)\\s+ON UPDATE CURRENT_TIMESTAMP(?:\\([^)]*\\))?", "");
+        // 特别处理 DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP 组合
+        content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+CURRENT_TIMESTAMP(?:\\([^)]*\\))?\\s+ON UPDATE CURRENT_TIMESTAMP(?:\\([^)]*\\))?", "$1 DEFAULT CURRENT_TIMESTAMP");
+        // 特别处理 DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP 组合
+        content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+NULL\\s+ON UPDATE CURRENT_TIMESTAMP(?:\\([^)]*\\))?", "$1 DEFAULT NULL");
+        
         content = content.replaceAll("CHARACTER SET utf8mb4 COLLATE utf8mb4_bin", "");
         content = content.replaceAll("DEFAULT '0000-00-00 00:00:00'", "DEFAULT '2000-01-01 00:00:00'");
         
         // Handle DEFAULT CURRENT_TIMESTAMP - only for datetime columns
-        content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+CURRENT_TIMESTAMP(\\(\\d+\\))?", "$1 DEFAULT CURRENT_TIMESTAMP$2");
+        content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+CURRENT_TIMESTAMP(?:\\([^)]*\\))?", "$1 DEFAULT CURRENT_TIMESTAMP");
         
         content = content.replaceAll("DEFAULT b", "DEFAULT");
         content = content.replaceAll("DEFAULT (\\-?[0-9]+(\\.[0-9]+)?)", "DEFAULT '$1'");
@@ -383,6 +386,9 @@ public class SchemaToDoris implements Callable<Integer> {
         content = content.replaceAll("COLLATE utf8mb4_unicode_ci", "");
         content = content.replaceAll("COLLATE utf8_unicode_ci", "");
         content = content.replaceAll("COLLATE utf8_bin", "");
+        // 添加对单独 COLLATE 子句的处理
+        content = content.replaceAll("(?i)\\s+COLLATE\\s+[^\\s,)]+", "");
+        
         content = content.replaceAll("\\btinytext\\b", "varchar(65533)");
         content = content.replaceAll("text\\([^)]*\\)", "varchar(65533)");
         content = content.replaceAll("\\btext\\b", "varchar(65533)");
