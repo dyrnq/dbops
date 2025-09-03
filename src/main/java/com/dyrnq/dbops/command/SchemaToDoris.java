@@ -579,7 +579,7 @@ public class SchemaToDoris implements Callable<Integer> {
         String jdbcUrl = connectionInfo.get("jdbcUrl");
         String driverUrl = this.jdbcDriverUrl;
         String driverClass = "com.mysql.cj.jdbc.Driver";
-        String resourceName = "jdbc_catalog"; // Default resource name
+        String resourceName = "jdbc_resource"; // Default resource name
 
         // If sourceSchema is different from the database in jdbcUrl, replace it
         if (sourceSchema != null && !sourceSchema.isEmpty() && jdbcUrl != null && jdbcUrl.contains("/")) {
