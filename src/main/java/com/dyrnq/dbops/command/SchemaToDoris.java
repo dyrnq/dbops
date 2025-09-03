@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.noear.snack.ONode;
 import org.noear.solon.Solon;
 import org.noear.solon.data.sql.SqlUtils;
@@ -50,6 +51,13 @@ public class SchemaToDoris implements Callable<Integer> {
 
     @CommandLine.Option(names = {"--driver-url", "--jdbc-driver-url"}, description = "", defaultValue = "https://repo.huaweicloud.com/repository/maven/com/mysql/mysql-connector-j/8.4.0/mysql-connector-j-8.4.0.jar")
     String jdbcDriverUrl;
+
+    @CommandLine.Option(names = {"--target-table-prefix", "--table-prefix"})
+    String targetTablePrefix;
+
+    @CommandLine.Option(names = {"--target-table-suffix", "--table-suffix"})
+    String targetTableSuffix;
+
 
     @Override
     public Integer call() throws Exception {
@@ -147,8 +155,13 @@ public class SchemaToDoris implements Callable<Integer> {
             String tableName = table.get("TABLE_NAME");
             log.info("Converting table {} to Doris OLAP table", tableName);
 
+            // Apply table prefix and suffix if specified
+            String targetTableName = (targetTablePrefix != null ? targetTablePrefix : "") + 
+                                   tableName + 
+                                   (targetTableSuffix != null ? targetTableSuffix : "");
+
             String createStatement = getCreateTableStatement(sourceSqlUtils, sourceSchema, tableName);
-            String dorisStatement = convertToDorisOlapTable(createStatement, tableName, targetSchema);
+            String dorisStatement = convertToDorisOlapTable(createStatement, tableName, targetSchema, targetTableName);
             statements.add(dorisStatement);
         }
 
@@ -165,14 +178,23 @@ public class SchemaToDoris implements Callable<Integer> {
             String tableName = table.get("TABLE_NAME");
             log.info("Converting table {} to Doris ODBC external table", tableName);
 
-            String dorisTableName = StringUtils.isBlank(targetSchema) ? tableName : targetSchema + "." + tableName;
+            // Apply table prefix and suffix if specified
+            String targetTableName = targetTableName(tableName);
 
+            String dorisTableName = StringUtils.isBlank(targetSchema) ? targetTableName : targetSchema + "." + targetTableName;
 
             String dorisStatement = generateOdbcExternalTable(sourceSchema, tableName, dorisTableName, connectionInfo);
             statements.add(dorisStatement);
         }
 
         return statements;
+    }
+    // Apply table prefix and suffix if specified
+    private String targetTableName(String tableName){
+        return
+                (StringUtils.isNoneBlank(targetTablePrefix) ? targetTablePrefix : "") +
+                tableName +
+                (StringUtils.isNoneBlank(targetTableSuffix) ? targetTableSuffix : "");
     }
 
     private List<String> generateExternalJdbcTables(SqlUtils sourceSqlUtils, String sourceSchema, List<Map<String, String>> tables) throws Exception {
@@ -190,7 +212,10 @@ public class SchemaToDoris implements Callable<Integer> {
             String tableName = table.get("TABLE_NAME");
             log.info("Converting table {} to Doris JDBC external table", tableName);
 
-            String dorisTableName = StringUtils.isBlank(targetSchema) ? tableName : targetSchema + "." + tableName;
+            // Apply table prefix and suffix if specified
+            String targetTableName = targetTableName(tableName);
+
+            String dorisTableName = StringUtils.isBlank(targetSchema) ? targetTableName : targetSchema + "." + targetTableName;
             String dorisStatement = generateJdbcExternalTable(sourceSchema, tableName, dorisTableName, connectionInfo);
             statements.add(dorisStatement);
         }
@@ -214,7 +239,7 @@ public class SchemaToDoris implements Callable<Integer> {
         return statements;
     }
 
-    private String convertToDorisOlapTable(String mysqlCreateStatement, String mysqlTableName, String dorisSchema) throws Exception {
+    private String convertToDorisOlapTable(String mysqlCreateStatement, String mysqlTableName, String dorisSchema, String targetTableName) throws Exception {
         try {
             // Process the MySQL statement to extract CREATE TABLE part
             String createTableStatement = extractCreateTableStatement(mysqlCreateStatement);
@@ -226,7 +251,7 @@ public class SchemaToDoris implements Callable<Integer> {
             createTableStatement = transformToDorisOlap(createTableStatement);
 
             // Replace identifiers and add IF NOT EXISTS
-            String dorisTableName = dorisSchema + "." + mysqlTableName;
+            String dorisTableName = StringUtils.isBlank(dorisSchema) ? targetTableName : dorisSchema + "." + targetTableName;
             createTableStatement = replaceTableNames(createTableStatement, mysqlTableName, dorisTableName);
 
             // Apply type conversions
@@ -370,13 +395,13 @@ public class SchemaToDoris implements Callable<Integer> {
         content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+CURRENT_TIMESTAMP(?:\\([^)]*\\))?\\s+ON UPDATE CURRENT_TIMESTAMP(?:\\([^)]*\\))?", "$1 DEFAULT CURRENT_TIMESTAMP");
         // 特别处理 DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP 组合
         content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+NULL\\s+ON UPDATE CURRENT_TIMESTAMP(?:\\([^)]*\\))?", "$1 DEFAULT NULL");
-        
+
         content = content.replaceAll("CHARACTER SET utf8mb4 COLLATE utf8mb4_bin", "");
         content = content.replaceAll("DEFAULT '0000-00-00 00:00:00'", "DEFAULT '2000-01-01 00:00:00'");
-        
+
         // Handle DEFAULT CURRENT_TIMESTAMP - only for datetime columns
         content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+CURRENT_TIMESTAMP(?:\\([^)]*\\))?", "$1 DEFAULT CURRENT_TIMESTAMP");
-        
+
         content = content.replaceAll("DEFAULT b", "DEFAULT");
         content = content.replaceAll("DEFAULT (\\-?[0-9]+(\\.[0-9]+)?)", "DEFAULT '$1'");
         content = content.replaceAll("CHARACTER SET utf8mb4", "");
@@ -388,7 +413,7 @@ public class SchemaToDoris implements Callable<Integer> {
         content = content.replaceAll("COLLATE utf8_bin", "");
         // 添加对单独 COLLATE 子句的处理
         content = content.replaceAll("(?i)\\s+COLLATE\\s+[^\\s,)]+", "");
-        
+
         content = content.replaceAll("\\btinytext\\b", "varchar(65533)");
         content = content.replaceAll("text\\([^)]*\\)", "varchar(65533)");
         content = content.replaceAll("\\btext\\b", "varchar(65533)");
@@ -430,7 +455,7 @@ public class SchemaToDoris implements Callable<Integer> {
         content = content.replaceAll("NULL \\(\\d+\\)", "NULL");
         content = content.replaceAll("datetime\\((\\d+)\\)\\s+NULL\\s*\\(\\d+\\)", "datetime($1) NULL");
         content = content.replaceAll("datetime\\((\\d+)\\)\\s+NOT NULL\\s*\\(\\d+\\)", "datetime($1) NOT NULL");
-        
+
         // Fix datetime(6) (6) syntax
         content = content.replaceAll("datetime\\((\\d+)\\)\\s*\\(\\d+\\)", "datetime($1)");
         content = content.replaceAll("CURRENT_TIMESTAMP\\((\\d+)\\)\\s*\\(\\d+\\)", "CURRENT_TIMESTAMP($1)");
@@ -556,7 +581,7 @@ public class SchemaToDoris implements Callable<Integer> {
         String driverClass = "com.mysql.cj.jdbc.Driver";
         String resourceName = "jdbc_catalog"; // Default resource name
 
-        sb.append("CREATE RESOURCE IF NOT EXISTS ").append(resourceName).append("\n");
+        sb.append("CREATE RESOURCE IF NOT EXISTS `").append(resourceName).append("`\n");
         sb.append("PROPERTIES (\n");
         sb.append("  \"type\"=\"jdbc\",\n");
         sb.append("  \"user\"=\"").append(user).append("\",\n");
@@ -593,7 +618,7 @@ public class SchemaToDoris implements Callable<Integer> {
         String driverClass = "com.mysql.cj.jdbc.Driver";
         String catalogName = "jdbc_catalog"; // Default catalog name
 
-        sb.append("CREATE CATALOG IF NOT EXISTS ").append(catalogName).append("\n");
+        sb.append("CREATE CATALOG IF NOT EXISTS `").append(catalogName).append("`\n");
         sb.append("PROPERTIES (\n");
         sb.append("  \"type\"=\"jdbc\",\n");
         sb.append("  \"user\"=\"").append(user).append("\",\n");
