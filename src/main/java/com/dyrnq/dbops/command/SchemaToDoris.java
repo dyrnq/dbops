@@ -1,5 +1,6 @@
 package com.dyrnq.dbops.command;
 
+import cn.hutool.db.dialect.DriverUtil;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.zaxxer.hikari.HikariDataSource;
@@ -612,7 +613,7 @@ public class SchemaToDoris implements Callable<Integer> {
         String password = connectionInfo.get("password");
         String jdbcUrl = connectionInfo.get("jdbcUrl");
         String driverUrl = this.jdbcDriverUrl;
-        String driverClass = "com.mysql.cj.jdbc.Driver";
+        String driverClass = connectionInfo.get("driverClass");
         String resourceName = getJr(); // Default resource name
 
         // If sourceSchema is different from the database in jdbcUrl, replace it
@@ -666,7 +667,7 @@ public class SchemaToDoris implements Callable<Integer> {
             }
         }
         String driverUrl = this.jdbcDriverUrl;
-        String driverClass = "com.mysql.cj.jdbc.Driver";
+        String driverClass = connectionInfo.get("driverClass");
         String catalogName = getJc(); // Default catalog name
 
         // If sourceSchema is different from the database in jdbcUrl, replace it
@@ -847,6 +848,9 @@ public class SchemaToDoris implements Callable<Integer> {
                     connectionInfo.put("port", hostPortParts.length > 1 ? hostPortParts[1] : "3306");
                     connectionInfo.put("jdbcUrl", url);
                 }
+
+                String driverClass = DriverUtil.identifyDriver(conn);
+                connectionInfo.put("driverClass", driverClass);
 //                connectionInfo.put("user", metaData.getUserName());
             }
             if (dataSource instanceof HikariDataSource hikariDataSource) {
