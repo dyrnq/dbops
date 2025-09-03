@@ -275,7 +275,8 @@ public class SchemaToDoris implements Callable<Integer> {
             if (!line.trim().startsWith("  CON") &&
                 !line.trim().startsWith("  KEY") &&
                 !line.trim().startsWith("PRIMARY KEY") &&
-                !line.trim().startsWith("UNIQUE KEY")) {
+                !line.trim().startsWith("UNIQUE KEY") &&
+                !line.trim().startsWith("KEY")) {
                 cleanedLines.add(line);
             }
         }
@@ -318,8 +319,8 @@ public class SchemaToDoris implements Callable<Integer> {
                 transformedLines.add("\"replication_allocation\" = \"tag.location.default: 3\"");
                 transformedLines.add(");");
                 engineLineFound = true;
-                // Don't add the ENGINE line or anything after it
-                break;
+//                // Don't add the ENGINE line or anything after it
+//                break;
             } else if (!engineLineFound) {
                 transformedLines.add(line);
             }
@@ -361,13 +362,18 @@ public class SchemaToDoris implements Callable<Integer> {
         content = content.replaceAll("CHARACTER SET utf8mb4 COLLATE utf8_general_ci", "");
         content = content.replaceAll("CHARACTER SET utf8 COLLATE utf8_general_ci", "");
 
-        // Handle TIMESTAMP updates
-        content = content.replaceAll("(?i)DEFAULT CURRENT_TIMESTAMP(\\(\\))? ON UPDATE CURRENT_TIMESTAMP(\\(\\))?", "");
-        content = content.replaceAll("(?i)DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(\\(\\))?", "");
+        // Handle TIMESTAMP updates - remove ON UPDATE CURRENT_TIMESTAMP as it's not supported in Doris OLAP tables
+        // Only apply to datetime columns
+        content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+ON UPDATE CURRENT_TIMESTAMP(\\(\\d+\\))?", "$1");
+        content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+CURRENT_TIMESTAMP(\\(\\d+\\))?\\s+ON UPDATE CURRENT_TIMESTAMP(\\(\\d+\\))?", "$1 DEFAULT CURRENT_TIMESTAMP$2");
+        content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+NULL\\s+ON UPDATE CURRENT_TIMESTAMP(\\(\\d+\\))?", "$1 DEFAULT CURRENT_TIMESTAMP$2");
 
         content = content.replaceAll("CHARACTER SET utf8mb4 COLLATE utf8mb4_bin", "");
         content = content.replaceAll("DEFAULT '0000-00-00 00:00:00'", "DEFAULT '2000-01-01 00:00:00'");
-        content = content.replaceAll("(?i)DEFAULT CURRENT_TIMESTAMP(\\(\\))?", "");
+        
+        // Handle DEFAULT CURRENT_TIMESTAMP - only for datetime columns
+        content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+CURRENT_TIMESTAMP(\\(\\d+\\))?", "$1 DEFAULT CURRENT_TIMESTAMP$2");
+        
         content = content.replaceAll("DEFAULT b", "DEFAULT");
         content = content.replaceAll("DEFAULT (\\-?[0-9]+(\\.[0-9]+)?)", "DEFAULT '$1'");
         content = content.replaceAll("CHARACTER SET utf8mb4", "");
@@ -413,6 +419,15 @@ public class SchemaToDoris implements Callable<Integer> {
         content = content.replaceAll("\\btime\\b", "varchar(64)");
         content = content.replaceAll("year\\([^)]*\\)", "varchar(64)");
         content = content.replaceAll("\\byear\\b", "varchar(64)");
+
+        // Fix the NULL (3) issue and datetime(n) syntax
+        content = content.replaceAll("NULL \\(\\d+\\)", "NULL");
+        content = content.replaceAll("datetime\\((\\d+)\\)\\s+NULL\\s*\\(\\d+\\)", "datetime($1) NULL");
+        content = content.replaceAll("datetime\\((\\d+)\\)\\s+NOT NULL\\s*\\(\\d+\\)", "datetime($1) NOT NULL");
+        
+        // Fix datetime(6) (6) syntax
+        content = content.replaceAll("datetime\\((\\d+)\\)\\s*\\(\\d+\\)", "datetime($1)");
+        content = content.replaceAll("CURRENT_TIMESTAMP\\((\\d+)\\)\\s*\\(\\d+\\)", "CURRENT_TIMESTAMP($1)");
 
         // Additional cleanup for common patterns
         content = content.replaceAll(" {2,}", " "); // Replace multiple spaces with single space
@@ -503,7 +518,7 @@ public class SchemaToDoris implements Callable<Integer> {
                 sb.append("\n");
             }
         } catch (Exception e) {
-            log.error("Error getting columns for table {}:{} {}", sourceSchema, sourceTable, e);
+            log.error("Error getting columns for table {}:{} {}", sourceSchema, sourceTable, e.getMessage());
             // Add a placeholder column if we can't get the actual columns
             sb.append("  `id` int NULL COMMENT 'Placeholder column'\n");
         }
@@ -568,7 +583,7 @@ public class SchemaToDoris implements Callable<Integer> {
                 }
             }
         }
-        String driverUrl = "https://repo.huaweicloud.com/repository/maven/com/mysql/mysql-connector-j/9.4.0/mysql-connector-j-9.4.0.jar";
+        String driverUrl = this.jdbcDriverUrl;
         String driverClass = "com.mysql.cj.jdbc.Driver";
         String catalogName = "jdbc_catalog"; // Default catalog name
 
@@ -635,7 +650,7 @@ public class SchemaToDoris implements Callable<Integer> {
                 sb.append("\n");
             }
         } catch (Exception e) {
-            log.error("Error getting columns for table {}:{} {}", sourceSchema, sourceTable, e);
+            log.error("Error getting columns for table {}:{} {}", sourceSchema, sourceTable, e.getMessage());
             // Add a placeholder column if we can't get the actual columns
             sb.append("  `id` int NULL COMMENT 'Placeholder column'\n");
         }
@@ -680,62 +695,38 @@ public class SchemaToDoris implements Callable<Integer> {
             if (columnType.toLowerCase().startsWith("char")) {
                 return columnType.replaceAll("char\\((\\d+)\\)", "char($1)");
             }
+            // Handle DATETIME with precision
+            if (columnType.toLowerCase().startsWith("datetime")) {
+                return columnType.replaceAll("datetime\\((\\d+)\\)", "datetime($1)");
+            }
         }
 
         // Handle data types
-        switch (dataType.toLowerCase()) {
-            case "tinyint":
-                return "tinyint";
-            case "smallint":
-                return "smallint";
-            case "mediumint":
-            case "int":
-                return "int";
-            case "bigint":
-                return "bigint";
-            case "float":
-                return "float";
-            case "double":
-                return "double";
-            case "decimal":
+        return switch (dataType.toLowerCase()) {
+            case "tinyint" -> "tinyint";
+            case "smallint" -> "smallint";
+            case "mediumint", "int" -> "int";
+            case "bigint" -> "bigint";
+            case "float" -> "float";
+            case "double" -> "double";
+            case "decimal" -> {
                 // Extract precision and scale if available
                 if (columnType != null && columnType.matches("decimal\\(\\d+,\\d+\\)")) {
-                    return columnType.replaceAll("decimal", "decimal");
+                    yield columnType.replaceAll("decimal", "decimal");
                 }
-                return "decimal(10,2)";
-            case "date":
-                return "date";
-            case "time":
-                return "varchar(64)";
-            case "datetime":
-            case "timestamp":
-                return "datetime";
-            case "year":
-                return "varchar(64)";
-            case "char":
-                return "char(1)";
-            case "varchar":
-                return "varchar(255)";
-            case "tinytext":
-            case "text":
-            case "mediumtext":
-            case "longtext":
-                return "varchar(65533)";
-            case "binary":
-            case "varbinary":
-            case "tinyblob":
-            case "blob":
-            case "mediumblob":
-            case "longblob":
-                return "varchar(65533)";
-            case "enum":
-            case "set":
-                return "varchar(65533)";
-            case "json":
-                return "varchar(65533)";
-            default:
-                return "varchar(65533)";
-        }
+                yield "decimal(10,2)";
+            }
+            case "date" -> "date";
+            case "time", "year" -> "varchar(64)";
+            case "datetime", "timestamp" -> "datetime";
+            case "char" -> "char(1)";
+            case "varchar" -> "varchar(255)";
+//            case "tinytext", "text", "mediumtext", "longtext" -> "varchar(65533)";
+//            case "binary", "varbinary", "tinyblob", "blob", "mediumblob", "longblob" -> "varchar(65533)";
+//            case "enum", "set" -> "varchar(65533)";
+//            case "json" -> "varchar(65533)";
+            default -> "varchar(65533)";
+        };
     }
 
     private Map<String, String> getConnectionInfo(String datasourceName) throws SQLException {
