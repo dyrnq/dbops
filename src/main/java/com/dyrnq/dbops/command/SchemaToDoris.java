@@ -204,7 +204,7 @@ public class SchemaToDoris implements Callable<Integer> {
         Map<String, String> connectionInfo = getConnectionInfo(sourceDatasource);
 
         // For JDBC external tables, we need to create a RESOURCE first
-        String resourceStatement = generateJdbcResourceStatement(connectionInfo);
+        String resourceStatement = generateJdbcResourceStatement(connectionInfo, sourceSchema);
         statements.add(resourceStatement);
 
         // For each table, generate a CREATE TABLE statement that references the JDBC resource
@@ -230,7 +230,7 @@ public class SchemaToDoris implements Callable<Integer> {
         Map<String, String> connectionInfo = getConnectionInfo(sourceDatasource);
 
         // For jdbc_catalog type, we need to create a CATALOG (not RESOURCE)
-        String catalogStatement = generateJdbcCatalogStatement(connectionInfo);
+        String catalogStatement = generateJdbcCatalogStatement(connectionInfo, sourceSchema);
         statements.add(catalogStatement);
 
         // For jdbc_catalog, we don't create tables, just the catalog
@@ -570,7 +570,7 @@ public class SchemaToDoris implements Callable<Integer> {
         return sb.toString();
     }
 
-    private String generateJdbcResourceStatement(Map<String, String> connectionInfo) {
+    private String generateJdbcResourceStatement(Map<String, String> connectionInfo, String sourceSchema) {
         StringBuilder sb = new StringBuilder();
 
         // Get connection details
@@ -580,6 +580,23 @@ public class SchemaToDoris implements Callable<Integer> {
         String driverUrl = this.jdbcDriverUrl;
         String driverClass = "com.mysql.cj.jdbc.Driver";
         String resourceName = "jdbc_catalog"; // Default resource name
+
+        // If sourceSchema is different from the database in jdbcUrl, replace it
+        if (sourceSchema != null && !sourceSchema.isEmpty() && jdbcUrl != null && jdbcUrl.contains("/")) {
+            String[] parts = jdbcUrl.split("/");
+            if (parts.length > 0) {
+                String dbPart = parts[parts.length - 1];
+                String currentDb = dbPart;
+                if (dbPart.contains("?")) {
+                    currentDb = dbPart.substring(0, dbPart.indexOf("?"));
+                }
+                if (!currentDb.equals(sourceSchema)) {
+                    // Replace the database part in jdbcUrl
+                    String newJdbcUrl = jdbcUrl.replace("/" + dbPart, "/" + sourceSchema + (dbPart.contains("?") ? dbPart.substring(dbPart.indexOf("?")) : ""));
+                    jdbcUrl = newJdbcUrl;
+                }
+            }
+        }
 
         sb.append("CREATE RESOURCE IF NOT EXISTS `").append(resourceName).append("`\n");
         sb.append("PROPERTIES (\n");
@@ -594,7 +611,7 @@ public class SchemaToDoris implements Callable<Integer> {
         return sb.toString();
     }
 
-    private String generateJdbcCatalogStatement(Map<String, String> connectionInfo) {
+    private String generateJdbcCatalogStatement(Map<String, String> connectionInfo, String sourceSchema) {
         StringBuilder sb = new StringBuilder();
 
         // Get connection details
@@ -617,6 +634,23 @@ public class SchemaToDoris implements Callable<Integer> {
         String driverUrl = this.jdbcDriverUrl;
         String driverClass = "com.mysql.cj.jdbc.Driver";
         String catalogName = "jdbc_catalog"; // Default catalog name
+
+        // If sourceSchema is different from the database in jdbcUrl, replace it
+        if (sourceSchema != null && !sourceSchema.isEmpty() && jdbcUrl != null && jdbcUrl.contains("/")) {
+            String[] parts = jdbcUrl.split("/");
+            if (parts.length > 0) {
+                String dbPart = parts[parts.length - 1];
+                String currentDb = dbPart;
+                if (dbPart.contains("?")) {
+                    currentDb = dbPart.substring(0, dbPart.indexOf("?"));
+                }
+                if (!currentDb.equals(sourceSchema)) {
+                    // Replace the database part in jdbcUrl
+                    String newJdbcUrl = jdbcUrl.replace("/" + dbPart, "/" + sourceSchema + (dbPart.contains("?") ? dbPart.substring(dbPart.indexOf("?")) : ""));
+                    jdbcUrl = newJdbcUrl;
+                }
+            }
+        }
 
         sb.append("CREATE CATALOG IF NOT EXISTS `").append(catalogName).append("`\n");
         sb.append("PROPERTIES (\n");
