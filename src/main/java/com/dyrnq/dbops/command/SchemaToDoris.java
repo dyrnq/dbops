@@ -701,7 +701,7 @@ public class SchemaToDoris implements Callable<Integer> {
 
     private String generateJdbcExternalTable(String sourceSchema, String sourceTable, String dorisTable, Map<String, String> connectionInfo) {
         StringBuilder sb = new StringBuilder();
-
+        String resourceName = getJr();
         String dorisTableFormatted = dorisTable.replace(".", "`.`");
         sb.append("CREATE TABLE IF NOT EXISTS `").append(dorisTableFormatted).append("` (\n");
 
@@ -757,7 +757,7 @@ public class SchemaToDoris implements Callable<Integer> {
         sb.append(") ENGINE=JDBC\n");
         sb.append(" COMMENT \"JDBC\"\n");
         sb.append("PROPERTIES (\n");
-        sb.append("\"resource\" = \"jdbc_catalog\",\n");
+        sb.append("\"resource\" = \"").append(resourceName).append("\",\n");
         sb.append("\"database\" = \"").append(sourceSchema).append("\",\n");
         sb.append("\"table\" = \"").append(sourceTable).append("\",\n");
 
