@@ -5,13 +5,13 @@ import com.google.gson.GsonBuilder;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Strings;
 import org.noear.snack.ONode;
 import org.noear.solon.Solon;
 import org.noear.solon.data.sql.SqlUtils;
 import picocli.CommandLine;
 
 import javax.sql.DataSource;
+import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
@@ -57,6 +57,41 @@ public class SchemaToDoris implements Callable<Integer> {
 
     @CommandLine.Option(names = {"--target-table-suffix", "--table-suffix"})
     String targetTableSuffix;
+
+    @CommandLine.Option(names = {"--jdbc-catalog-name", "--jdbc-catalog", "-jc"}, defaultValue = "jdbc_catalog_$sourceSchema")
+    String jdbcCatalogName;
+
+    @CommandLine.Option(names = {"--jdbc-resource-name", "--jdbc-resource", "-jr"}, defaultValue = "jdbc_resource_$sourceSchema")
+    String jdbcResourceName;
+
+    private String getJc() {
+        return replaceTemplate(jdbcCatalogName);
+    }
+
+    private String getJr() {
+        return replaceTemplate(jdbcResourceName);
+    }
+
+    private String replaceTemplate(String template) {
+        Field[] fields = getClass().getDeclaredFields();
+        for (Field field : fields) {
+            if (field.isAnnotationPresent(CommandLine.Option.class)) {
+                try {
+                    field.setAccessible(true);
+                    String fieldName = field.getName();
+                    Object fieldValue = field.get(this);
+
+                    if (fieldValue != null) {
+                        template = template.replace("$" + fieldName, fieldValue.toString());
+                    }
+                } catch (IllegalAccessException e) {
+                    // Handle exception
+                }
+
+            }
+        }
+        return template;
+    }
 
 
     @Override
@@ -156,9 +191,7 @@ public class SchemaToDoris implements Callable<Integer> {
             log.info("Converting table {} to Doris OLAP table", tableName);
 
             // Apply table prefix and suffix if specified
-            String targetTableName = (targetTablePrefix != null ? targetTablePrefix : "") + 
-                                   tableName + 
-                                   (targetTableSuffix != null ? targetTableSuffix : "");
+            String targetTableName = targetTableName(tableName);
 
             String createStatement = getCreateTableStatement(sourceSqlUtils, sourceSchema, tableName);
             String dorisStatement = convertToDorisOlapTable(createStatement, tableName, targetSchema, targetTableName);
@@ -189,8 +222,9 @@ public class SchemaToDoris implements Callable<Integer> {
 
         return statements;
     }
+
     // Apply table prefix and suffix if specified
-    private String targetTableName(String tableName){
+    private String targetTableName(String tableName) {
         return
                 (StringUtils.isNoneBlank(targetTablePrefix) ? targetTablePrefix : "") +
                 tableName +
@@ -579,7 +613,7 @@ public class SchemaToDoris implements Callable<Integer> {
         String jdbcUrl = connectionInfo.get("jdbcUrl");
         String driverUrl = this.jdbcDriverUrl;
         String driverClass = "com.mysql.cj.jdbc.Driver";
-        String resourceName = "jdbc_resource"; // Default resource name
+        String resourceName = getJr(); // Default resource name
 
         // If sourceSchema is different from the database in jdbcUrl, replace it
         if (sourceSchema != null && !sourceSchema.isEmpty() && jdbcUrl != null && jdbcUrl.contains("/")) {
@@ -633,7 +667,7 @@ public class SchemaToDoris implements Callable<Integer> {
         }
         String driverUrl = this.jdbcDriverUrl;
         String driverClass = "com.mysql.cj.jdbc.Driver";
-        String catalogName = "jdbc_catalog"; // Default catalog name
+        String catalogName = getJc(); // Default catalog name
 
         // If sourceSchema is different from the database in jdbcUrl, replace it
         if (sourceSchema != null && !sourceSchema.isEmpty() && jdbcUrl != null && jdbcUrl.contains("/")) {
