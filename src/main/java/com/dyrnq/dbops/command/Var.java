@@ -2,7 +2,7 @@ package com.dyrnq.dbops.command;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import org.noear.snack.ONode;
+import org.noear.snack4.ONode;
 import org.noear.solon.data.sql.SqlUtils;
 import picocli.CommandLine;
 
@@ -25,7 +25,7 @@ public class Var extends CommonOptions implements Callable<Integer> {
         List<String> listS = sqlUtils.sql(sql).queryRowList(String.class);
         Map<String, String> mapS = new LinkedHashMap<>();
         listS.forEach(c -> {
-            ONode o = ONode.loadStr(c);
+            ONode o = ONode.ofJson(c);
             mapS.put(
                     o.get("Variable_name").getString(),
                     o.get("Value").getString()

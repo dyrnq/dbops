@@ -3,7 +3,7 @@ package com.dyrnq.dbops.command;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import lombok.extern.slf4j.Slf4j;
-import org.noear.snack.ONode;
+import org.noear.snack4.ONode;
 import org.noear.solon.data.sql.SqlUtils;
 import picocli.CommandLine;
 
@@ -717,7 +717,7 @@ public class SchemaDiff implements Callable<Integer> {
         String sql = "SHOW CREATE TABLE `" + schema + "`.`" + tableName + "`";
         List<String> result = sqlUtils.sql(sql).queryRowList(String.class);
         if (result != null && !result.isEmpty()) {
-            ONode o = ONode.loadStr(result.get(0));
+            ONode o = ONode.ofJson(result.get(0));
             return o.get("Create Table").getString();
         }
         return "-- Could not retrieve CREATE statement for " + tableName;
@@ -727,7 +727,7 @@ public class SchemaDiff implements Callable<Integer> {
         String sql = "SHOW CREATE VIEW `" + schema + "`.`" + viewName + "`";
         List<String> result = sqlUtils.sql(sql).queryRowList(String.class);
         if (result != null && !result.isEmpty()) {
-            ONode o = ONode.loadStr(result.get(0));
+            ONode o = ONode.ofJson(result.get(0));
             return o.get("Create View").getString();
         }
         return "-- Could not retrieve CREATE statement for view " + viewName;
@@ -737,7 +737,7 @@ public class SchemaDiff implements Callable<Integer> {
         String sql = "SHOW CREATE " + routineType.toUpperCase() + " `" + schema + "`.`" + routineName + "`";
         List<String> result = sqlUtils.sql(sql).queryRowList(String.class);
         if (result != null && !result.isEmpty()) {
-            ONode o = ONode.loadStr(result.get(0));
+            ONode o = ONode.ofJson(result.get(0));
             return o.get("Create " + routineType.substring(0, 1).toUpperCase() + routineType.substring(1)).getString();
         }
         return "-- Could not retrieve CREATE statement for " + routineType + " " + routineName;
@@ -747,7 +747,7 @@ public class SchemaDiff implements Callable<Integer> {
         String sql = "SHOW CREATE TRIGGER `" + schema + "`.`" + triggerName + "`";
         List<String> result = sqlUtils.sql(sql).queryRowList(String.class);
         if (result != null && !result.isEmpty()) {
-            ONode o = ONode.loadStr(result.get(0));
+            ONode o = ONode.ofJson(result.get(0));
             return o.get("SQL Original Statement").getString();
         }
         return "-- Could not retrieve CREATE statement for trigger " + triggerName;
@@ -757,7 +757,7 @@ public class SchemaDiff implements Callable<Integer> {
         String sql = "SHOW CREATE EVENT `" + schema + "`.`" + eventName + "`";
         List<String> result = sqlUtils.sql(sql).queryRowList(String.class);
         if (result != null && !result.isEmpty()) {
-            ONode o = ONode.loadStr(result.get(0));
+            ONode o = ONode.ofJson(result.get(0));
             return o.get("Create Event").getString();
         }
         return "-- Could not retrieve CREATE statement for event " + eventName;
@@ -889,11 +889,12 @@ public class SchemaDiff implements Callable<Integer> {
         for (String row : result) {
             if (row != null && !row.trim().isEmpty()) {
                 try {
-                    ONode o = ONode.loadStr(row);
+                    ONode o = ONode.ofJson(row);
                     Map<String, String> map = new HashMap<>();
                     // 使用 forEach 遍历 ONode 对象的所有键值对
-                    o.forEach((k, v) -> {
-                        map.put(k, v.getString());
+
+                    o.getObject().forEach((k, v) -> {
+                        map.put(k,v.getString());
                     });
                     parsed.add(map);
                 } catch (Exception e) {
@@ -913,7 +914,7 @@ public class SchemaDiff implements Callable<Integer> {
             if (result != null && !result.isEmpty() && result.get(0) != null) {
                 // Parse the JSON result to extract the database name
                 String jsonResult = result.get(0);
-                ONode o = ONode.loadStr(jsonResult);
+                ONode o = ONode.ofJson(jsonResult);
                 return o.get("DATABASE()").getString();
             }
         } catch (Exception e) {

@@ -6,7 +6,7 @@ import com.google.gson.GsonBuilder;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.noear.snack.ONode;
+import org.noear.snack4.ONode;
 import org.noear.solon.Solon;
 import org.noear.solon.data.sql.SqlUtils;
 import picocli.CommandLine;
@@ -901,7 +901,7 @@ public class SchemaToDoris implements Callable<Integer> {
         String sql = "SHOW CREATE TABLE `" + schema + "`.`" + tableName + "`";
         List<String> result = sqlUtils.sql(sql).queryRowList(String.class);
         if (result != null && !result.isEmpty()) {
-            ONode o = ONode.loadStr(result.get(0));
+            ONode o = ONode.ofJson(result.get(0));
             return o.get("Create Table").getString();
         }
         return "-- Could not retrieve CREATE statement for " + tableName;
@@ -915,10 +915,10 @@ public class SchemaToDoris implements Callable<Integer> {
         for (String row : result) {
             if (row != null && !row.trim().isEmpty()) {
                 try {
-                    ONode o = ONode.loadStr(row);
+                    ONode o = ONode.ofJson(row);
                     Map<String, String> map = new HashMap<>();
                     // 使用 forEach 遍历 ONode 对象的所有键值对
-                    o.forEach((k, v) -> {
+                    o.getObject().forEach((k, v) -> {
                         map.put(k, v.getString());
                     });
                     parsed.add(map);
@@ -937,7 +937,7 @@ public class SchemaToDoris implements Callable<Integer> {
             if (result != null && !result.isEmpty() && result.get(0) != null) {
                 // Parse the JSON result to extract the database name
                 String jsonResult = result.get(0);
-                ONode o = ONode.loadStr(jsonResult);
+                ONode o = ONode.ofJson(jsonResult);
                 return o.get("DATABASE()").getString();
             }
         } catch (Exception e) {
