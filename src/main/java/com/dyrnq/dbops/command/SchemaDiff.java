@@ -894,7 +894,7 @@ public class SchemaDiff implements Callable<Integer> {
                     // 使用 forEach 遍历 ONode 对象的所有键值对
 
                     o.getObject().forEach((k, v) -> {
-                        map.put(k,v.getString());
+                        map.put(k, v.getString());
                     });
                     parsed.add(map);
                 } catch (Exception e) {
