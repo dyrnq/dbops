@@ -8,4 +8,5 @@ fi
 
 ver=$(/tmp/xq -x /project/version < pom.xml)
 echo "ver=${ver}"
+sed -i "s/VERSION=\"v[^\"]*\"/VERSION=\"v$ver\"/" src/main/java/com/dyrnq/dbops/Constants.java
 mvn clean package -Dmaven.test.skip=true --file pom.xml
