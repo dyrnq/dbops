@@ -1,6 +1,6 @@
 package com.dyrnq.dbops.command;
 
-import org.noear.solon.data.sql.SqlUtils;
+import com.dyrnq.dbops.Constants;
 import picocli.CommandLine;
 
 import java.util.concurrent.Callable;
@@ -13,9 +13,7 @@ import java.util.concurrent.Callable;
 public class Version extends CommonOptions implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
-        SqlUtils sqlUtils = SqlUtils.ofName(ds);
-        sql = "select version();";
-        System.out.print(sqlUtils.sql(sql).queryRow(String.class));
+        System.out.println(Constants.VERSION);
         return 0;
     }
 }

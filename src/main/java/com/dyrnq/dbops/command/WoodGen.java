@@ -9,6 +9,7 @@ import freemarker.template.Template;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.noear.solon.data.sql.SqlUtils;
 import picocli.CommandLine;
 
@@ -53,6 +54,8 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
     @CommandLine.Option(names = {"--customize-end", "--end", "-e"}, description = "distDir", defaultValue = "//Customize END")
     String customize_end;
 
+    @CommandLine.Option(names = {"--skip-tables", "-k"}, arity = "1..*", description = "skip tables")
+    private String[] skipTables;
 
     public static String toCamelString(String name) {
         return toCamelString(name, false);
@@ -65,7 +68,7 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
      * @return 转换后的名称
      */
     public static String toLowerCaseIfAllUpperCase(String name) {
-        if (name == null || name.length() == 0) {
+        if (name == null || name.isEmpty()) {
             return name;
         }
         if (LOWER_CASE.matcher(name).find()) {
@@ -76,7 +79,7 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
     }
 
     public static String toCamelString(String name, boolean startsWithUpperCase) {
-        if (name == null || name.length() == 0) {
+        if (name == null || name.isEmpty()) {
             return name;
         }
         char[] chars = toLowerCaseIfAllUpperCase(name.trim()).toCharArray();
@@ -115,19 +118,19 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
 
         String up = dbType.toUpperCase();
 
-        if (StringUtils.startsWith(up, "INT")) {
+        if (Strings.CS.startsWith(up, "INT")) {
             return "Integer";
-        } else if (StringUtils.startsWith(up, "TINYINT")) {
+        } else if (Strings.CS.startsWith(up, "TINYINT")) {
             return "Integer";
-        } else if (StringUtils.startsWith(up, "SMALLINT")) {
+        } else if (Strings.CS.startsWith(up, "SMALLINT")) {
             return "Integer";
-        } else if (StringUtils.startsWith(up, "BIGINT")) {
+        } else if (Strings.CS.startsWith(up, "BIGINT")) {
             return "Long";
-        } else if (StringUtils.startsWith(up, "TIMESTAMP")) {
+        } else if (Strings.CS.startsWith(up, "TIMESTAMP")) {
             return "java.time.LocalDateTime";
-        } else if (StringUtils.equalsIgnoreCase(up, "DATE")) {
+        } else if (Strings.CI.equals(up, "DATE")) {
             return "java.time.LocalDateTime";
-        } else if (StringUtils.equalsIgnoreCase(up, "DATETIME")) {
+        } else if (Strings.CI.equals(up, "DATETIME")) {
             return "java.time.LocalDateTime";
         }
 
@@ -173,8 +176,12 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
         String mapper_pkg = StrUtil.isBlank(mapper_package_name) ? (package_name + "." + DEFAULT_MAPPER_SUBPACKAGE_NAME) : mapper_package_name;
 
 
-        Map<String, String> skipTables = new LinkedHashMap<>();
-
+        Map<String, String> skipTablesMap = new LinkedHashMap<>();
+        if (skipTables != null) {
+            for (String skipTable : skipTables) {
+                skipTablesMap.put(skipTable, skipTable);
+            }
+        }
 
         // 获取所有表名
         SqlUtils sqlUtils = SqlUtils.ofName(ds);
@@ -184,14 +191,15 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
         String schema = getCurrentDatabase();
 
         Map<String, String> tableCommentMap = getTableCommentMap(schema);
-
+        // 获取表的元数据
+        DatabaseMetaData metaData = sqlUtils.getDataSource().getConnection().getMetaData();
         for (String tableName : tableNames) {
-            if (skipTables.containsKey(tableName)) {
+            if (skipTablesMap.containsKey(tableName)) {
+                //System.out.printf("skip %s%n", tableName);
                 continue;
             }
             Map<String, Object> data = new HashMap<>();
-            // 获取表的元数据
-            DatabaseMetaData metaData = sqlUtils.getDataSource().getConnection().getMetaData();
+
 
             Set<String> primaryKeys = new HashSet<>();
 
@@ -253,7 +261,7 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
             }
             data.put("fieldList", fieldList);
             String outputPath = StringUtils.joinWith(File.separator, distPath
-                    , StringUtils.replace(domain_pkg, ".", File.separator), domainName
+                    , Strings.CS.replace(domain_pkg, ".", File.separator), domainName
             ) + ".java";
             FileUtils.forceMkdirParent(new File(outputPath));
             if (FileUtil.isExistsAndNotDirectory(new File(outputPath).toPath(), false)) {
@@ -272,7 +280,7 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
 
 
             String mapper_outputPath = StringUtils.joinWith(File.separator, distPath
-                    , StringUtils.replace(mapper_pkg, ".", File.separator), mapperName
+                    , Strings.CS.replace(mapper_pkg, ".", File.separator), mapperName
             ) + ".java";
 
 

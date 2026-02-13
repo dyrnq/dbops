@@ -2,6 +2,7 @@ package com.dyrnq.dbops;
 
 import cn.hutool.core.io.FileUtil;
 import com.dyrnq.dbops.command.*;
+import com.dyrnq.dbops.command.Process;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RegExUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -20,7 +21,10 @@ import java.io.File;
                 BCryptPassword.class,
                 SchemaDiff.class,
                 SchemaToDoris.class,
-                WoodGen.class
+                WoodGen.class,
+                Info.class,
+                Process.class,
+                Tables.class
         },
         mixinStandardHelpOptions = true,
         showDefaultValues = true

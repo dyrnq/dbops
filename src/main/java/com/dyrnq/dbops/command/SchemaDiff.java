@@ -823,10 +823,10 @@ public class SchemaDiff implements Callable<Integer> {
 
     private List<Map<String, String>> getColumns(SqlUtils sqlUtils, String schema, String table) throws Exception {
         String sql = "SELECT COLUMN_NAME, COLUMN_TYPE, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT, " +
-                     "CHARACTER_SET_NAME, COLLATION_NAME, EXTRA, COLUMN_KEY, COLUMN_COMMENT, ORDINAL_POSITION " +
-                     "FROM information_schema.COLUMNS" +
-                     " WHERE TABLE_SCHEMA = '" + schema + "' AND TABLE_NAME = '" + table + "'" +
-                     " ORDER BY ORDINAL_POSITION";
+                "CHARACTER_SET_NAME, COLLATION_NAME, EXTRA, COLUMN_KEY, COLUMN_COMMENT, ORDINAL_POSITION " +
+                "FROM information_schema.COLUMNS" +
+                " WHERE TABLE_SCHEMA = '" + schema + "' AND TABLE_NAME = '" + table + "'" +
+                " ORDER BY ORDINAL_POSITION";
 
         List<String> result = sqlUtils.sql(sql).queryRowList(String.class);
         return parseResult(result);
@@ -846,7 +846,7 @@ public class SchemaDiff implements Callable<Integer> {
 
     private List<Map<String, String>> getRoutines(SqlUtils sqlUtils, String schema, String routineType) throws Exception {
         String sql = "SELECT ROUTINE_NAME FROM information_schema.ROUTINES" +
-                     " WHERE ROUTINE_TYPE = '" + routineType.toUpperCase() + "'";
+                " WHERE ROUTINE_TYPE = '" + routineType.toUpperCase() + "'";
         if (schema != null && !schema.isEmpty()) {
             sql += " AND ROUTINE_SCHEMA = '" + schema + "'";
         } else {

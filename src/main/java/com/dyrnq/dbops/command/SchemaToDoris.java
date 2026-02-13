@@ -228,8 +228,8 @@ public class SchemaToDoris implements Callable<Integer> {
     private String targetTableName(String tableName) {
         return
                 (StringUtils.isNoneBlank(targetTablePrefix) ? targetTablePrefix : "") +
-                tableName +
-                (StringUtils.isNoneBlank(targetTableSuffix) ? targetTableSuffix : "");
+                        tableName +
+                        (StringUtils.isNoneBlank(targetTableSuffix) ? targetTableSuffix : "");
     }
 
     private List<String> generateExternalJdbcTables(SqlUtils sourceSqlUtils, String sourceSchema, List<Map<String, String>> tables) throws Exception {
@@ -333,11 +333,11 @@ public class SchemaToDoris implements Callable<Integer> {
         for (String line : lines) {
             // Skip constraint and key lines
             if (!line.trim().startsWith("  CON") &&
-                !line.trim().startsWith("  KEY") &&
-                !line.trim().startsWith("PRIMARY KEY") &&
-                !line.trim().startsWith("UNIQUE KEY") &&
-                !line.trim().startsWith("KEY") &&
-                !line.trim().startsWith("CONSTRAINT")) {
+                    !line.trim().startsWith("  KEY") &&
+                    !line.trim().startsWith("PRIMARY KEY") &&
+                    !line.trim().startsWith("UNIQUE KEY") &&
+                    !line.trim().startsWith("KEY") &&
+                    !line.trim().startsWith("CONSTRAINT")) {
                 cleanedLines.add(line);
             }
         }
@@ -889,9 +889,9 @@ public class SchemaToDoris implements Callable<Integer> {
 
     private List<Map<String, String>> getColumns(SqlUtils sqlUtils, String schema, String table) throws Exception {
         String sql = "SELECT COLUMN_NAME, DATA_TYPE, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_COMMENT " +
-                     "FROM information_schema.COLUMNS " +
-                     "WHERE TABLE_SCHEMA = '" + schema + "' AND TABLE_NAME = '" + table + "' " +
-                     "ORDER BY ORDINAL_POSITION";
+                "FROM information_schema.COLUMNS " +
+                "WHERE TABLE_SCHEMA = '" + schema + "' AND TABLE_NAME = '" + table + "' " +
+                "ORDER BY ORDINAL_POSITION";
 
         List<String> result = sqlUtils.sql(sql).queryRowList(String.class);
         return parseResult(result);
