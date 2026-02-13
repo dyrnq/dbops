@@ -19,7 +19,8 @@ import java.io.File;
                 Version.class,
                 BCryptPassword.class,
                 SchemaDiff.class,
-                SchemaToDoris.class
+                SchemaToDoris.class,
+                WoodGen.class
         },
         mixinStandardHelpOptions = true,
         showDefaultValues = true
