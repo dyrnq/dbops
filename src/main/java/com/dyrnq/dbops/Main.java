@@ -24,7 +24,8 @@ import java.io.File;
                 WoodGen.class,
                 Info.class,
                 Process.class,
-                Tables.class
+                Tables.class,
+                Db.class
         },
         mixinStandardHelpOptions = true,
         showDefaultValues = true
