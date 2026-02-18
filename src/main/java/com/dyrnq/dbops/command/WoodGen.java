@@ -53,9 +53,13 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
 
     @CommandLine.Option(names = {"--customize-end", "--end", "-e"}, description = "distDir", defaultValue = "//Customize END")
     String customize_end;
-
+    @CommandLine.Option(names = {"--solon"})
+    boolean solon;
     @CommandLine.Option(names = {"--skip-tables", "-k"}, arity = "1..*", description = "skip tables")
     private String[] skipTables;
+    @CommandLine.Option(names = {"--extra-imports", "-i"}, arity = "1..*", description = "extra imports")
+    private String[] extraImports;
+
 
     public static String toCamelString(String name) {
         return toCamelString(name, false);
@@ -227,6 +231,28 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
             data.put("customize_end", customize_end);
             data.put("customize_content", "");
             data.put("openapi", openapi);
+            data.put("solon", solon);
+
+            List<String> imports = new ArrayList<>();
+            if (extraImports != null) {
+                Collections.addAll(imports, extraImports);
+            }
+            if (!solon) {
+                //import org.springframework.beans.factory.annotation.Autowired;
+                //import org.springframework.stereotype.Component;
+                imports.add("org.springframework.beans.factory.annotation.Autowired");
+                imports.add("org.springframework.stereotype.Component");
+                data.put("autowired", "@Autowired");
+            } else {
+//                import org.noear.solon.annotation.Component;
+//                import org.noear.solon.annotation.Inject;
+                imports.add("org.noear.solon.annotation.Component");
+                imports.add("org.noear.solon.annotation.Inject");
+                data.put("autowired", "@Inject");
+            }
+            data.put("imports", imports);
+
+
             String tableComment = "";
             try {
                 tableComment = tableCommentMap.get(tableName);
