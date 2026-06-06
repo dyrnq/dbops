@@ -985,7 +985,7 @@ public class SchemaToDoris implements Callable<Integer> {
             }
         } catch (Exception e) {
             // If DATABASE() fails, try another approach
-            log.warn("Could not determine database name: " + e.getMessage());
+            log.warn("Could not determine database name: {}", e.getMessage());
         }
         return null;
     }

@@ -226,130 +226,139 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
 
         Map<String, String> tableCommentMap = getTableCommentMap(schema);
         // 获取表的元数据
-        DatabaseMetaData metaData = sqlUtils.getDataSource().getConnection().getMetaData();
-        for (String tableName : tableNames) {
-            if (skipTablesMap.containsKey(tableName)) {
-                // System.out.printf("skip %s%n", tableName);
-                continue;
-            }
-            Map<String, Object> data = new HashMap<>();
+        try (Connection woodConn = sqlUtils.getDataSource().getConnection()) {
+            DatabaseMetaData metaData = woodConn.getMetaData();
+            for (String tableName : tableNames) {
+                if (skipTablesMap.containsKey(tableName)) {
+                    // System.out.printf("skip %s%n", tableName);
+                    continue;
+                }
+                Map<String, Object> data = new HashMap<>();
 
-            Set<String> primaryKeys = new HashSet<>();
+                Set<String> primaryKeys = new HashSet<>();
 
-            try (ResultSet pkRs = metaData.getPrimaryKeys(null, schema, tableName)) {
-                while (pkRs.next()) {
-                    String columnName = pkRs.getString("COLUMN_NAME");
-                    primaryKeys.add(columnName);
+                try (ResultSet pkRs = metaData.getPrimaryKeys(null, schema, tableName)) {
+                    while (pkRs.next()) {
+                        String columnName = pkRs.getString("COLUMN_NAME");
+                        primaryKeys.add(columnName);
+                    }
+                }
+                if (primaryKeys.isEmpty()) {
+                    primaryKeys.add("id");
+                }
+                ResultSet columns = metaData.getColumns(schema, schema, tableName, "%");
+                String domainName = toCamelString(tableName, true);
+                String mapperName = domainName + "Mapper";
+                data.put("table", tableName);
+                data.put("domain", domainName);
+                data.put("mapper", mapperName);
+                data.put("schema", schema);
+                data.put("full_domain", domain_pkg + "." + domainName);
+                data.put("package_name", domain_pkg);
+                data.put("mapper_pkg", mapper_pkg);
+                data.put("mapper_package_name", mapper_pkg);
+                data.put("customize_begin", customize_begin);
+                data.put("customize_end", customize_end);
+                data.put("customize_content", "");
+                data.put("openapi", openapi);
+                data.put("solon", solon);
+
+                List<String> imports = new ArrayList<>();
+                if (extraImports != null) {
+                    Collections.addAll(imports, extraImports);
+                }
+                if (!solon) {
+                    // import org.springframework.beans.factory.annotation.Autowired;
+                    // import org.springframework.stereotype.Component;
+                    imports.add("org.springframework.beans.factory.annotation.Autowired");
+                    imports.add("org.springframework.stereotype.Component");
+                    data.put("autowired", "@Autowired");
+                } else {
+                    //                import org.noear.solon.annotation.Component;
+                    //                import org.noear.solon.annotation.Inject;
+                    imports.add("org.noear.solon.annotation.Component");
+                    imports.add("org.noear.solon.annotation.Inject");
+                    data.put("autowired", "@Inject");
+                }
+                data.put("imports", imports);
+
+                String tableComment = "";
+                try {
+                    tableComment = tableCommentMap.get(tableName);
+                } catch (Exception exception) {
+                    exception.printStackTrace();
+                }
+
+                if (StrUtil.isBlank(tableComment)) {
+                    tableComment = tableName;
+                }
+
+                data.put("database", schema);
+                data.put("tableComment", tableComment);
+                List<Map<String, Object>> fieldList = new ArrayList<>();
+                while (columns.next()) {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    String columnName = columns.getString("COLUMN_NAME");
+                    String columnType = columns.getString("TYPE_NAME");
+                    int columnLength = columns.getInt("COLUMN_SIZE");
+                    String columnComment = columns.getString("REMARKS");
+
+                    item.put("pk", primaryKeys.contains(columnName));
+                    item.put("columnName", columnName);
+                    item.put("fieldName", toCamelString(columnName));
+                    item.put("fieldComment", columnComment);
+                    item.put("columnComment", columnComment);
+                    item.put("fieldType", dbTypeToJavaType(columnType));
+                    item.put("columnType", columnType);
+                    item.put("columnLength", columnLength);
+                    item.put("finalFieldName", StringUtils.upperCase(columnName));
+                    fieldList.add(item);
+                }
+                columns.close();
+                data.put("fieldList", fieldList);
+                String outputPath = StringUtils.joinWith(
+                                File.separator,
+                                distPath,
+                                Strings.CS.replace(domain_pkg, ".", File.separator),
+                                domainName)
+                        + ".java";
+                FileUtils.forceMkdirParent(new File(outputPath));
+                if (FileUtil.isExistsAndNotDirectory(new File(outputPath).toPath(), false)) {
+                    String content = IoUtil.readUtf8(new FileInputStream(new File(outputPath)));
+                    String oldC = StringUtils.substringBetween(content, customize_begin, customize_end);
+                    oldC = StringUtils.trim(oldC);
+                    data.put("customize_content", oldC);
+                } else {
+                    data.put("customize_content", "");
+                }
+
+                try (Writer out = new OutputStreamWriter(new FileOutputStream(outputPath), "UTF-8")) {
+                    modelTpl.process(data, out);
+                }
+
+                String mapper_outputPath = StringUtils.joinWith(
+                                File.separator,
+                                distPath,
+                                Strings.CS.replace(mapper_pkg, ".", File.separator),
+                                mapperName)
+                        + ".java";
+
+                FileUtils.forceMkdirParent(new File(mapper_outputPath));
+                if (FileUtil.isExistsAndNotDirectory(new File(mapper_outputPath).toPath(), false)) {
+                    String content = IoUtil.readUtf8(new FileInputStream(new File(mapper_outputPath)));
+                    String oldC = StringUtils.substringBetween(content, customize_begin, customize_end);
+                    oldC = StringUtils.trim(oldC);
+                    data.put("customize_content", oldC);
+                } else {
+                    data.put("customize_content", "");
+                }
+
+                try (Writer out = new OutputStreamWriter(new FileOutputStream(mapper_outputPath), "UTF-8")) {
+                    mapperTpl.process(data, out);
                 }
             }
-            if (primaryKeys.isEmpty()) {
-                primaryKeys.add("id");
-            }
-            ResultSet columns = metaData.getColumns(schema, schema, tableName, "%");
-            String domainName = toCamelString(tableName, true);
-            String mapperName = domainName + "Mapper";
-            data.put("table", tableName);
-            data.put("domain", domainName);
-            data.put("mapper", mapperName);
-            data.put("schema", schema);
-            data.put("full_domain", domain_pkg + "." + domainName);
-            data.put("package_name", domain_pkg);
-            data.put("mapper_pkg", mapper_pkg);
-            data.put("mapper_package_name", mapper_pkg);
-            data.put("customize_begin", customize_begin);
-            data.put("customize_end", customize_end);
-            data.put("customize_content", "");
-            data.put("openapi", openapi);
-            data.put("solon", solon);
 
-            List<String> imports = new ArrayList<>();
-            if (extraImports != null) {
-                Collections.addAll(imports, extraImports);
-            }
-            if (!solon) {
-                // import org.springframework.beans.factory.annotation.Autowired;
-                // import org.springframework.stereotype.Component;
-                imports.add("org.springframework.beans.factory.annotation.Autowired");
-                imports.add("org.springframework.stereotype.Component");
-                data.put("autowired", "@Autowired");
-            } else {
-                //                import org.noear.solon.annotation.Component;
-                //                import org.noear.solon.annotation.Inject;
-                imports.add("org.noear.solon.annotation.Component");
-                imports.add("org.noear.solon.annotation.Inject");
-                data.put("autowired", "@Inject");
-            }
-            data.put("imports", imports);
-
-            String tableComment = "";
-            try {
-                tableComment = tableCommentMap.get(tableName);
-            } catch (Exception exception) {
-                exception.printStackTrace();
-            }
-
-            if (StrUtil.isBlank(tableComment)) {
-                tableComment = tableName;
-            }
-
-            data.put("database", schema);
-            data.put("tableComment", tableComment);
-            List<Map<String, Object>> fieldList = new ArrayList<>();
-            while (columns.next()) {
-                Map<String, Object> item = new LinkedHashMap<>();
-                String columnName = columns.getString("COLUMN_NAME");
-                String columnType = columns.getString("TYPE_NAME");
-                int columnLength = columns.getInt("COLUMN_SIZE");
-                String columnComment = columns.getString("REMARKS");
-
-                item.put("pk", primaryKeys.contains(columnName));
-                item.put("columnName", columnName);
-                item.put("fieldName", toCamelString(columnName));
-                item.put("fieldComment", columnComment);
-                item.put("columnComment", columnComment);
-                item.put("fieldType", dbTypeToJavaType(columnType));
-                item.put("columnType", columnType);
-                item.put("columnLength", columnLength);
-                item.put("finalFieldName", StringUtils.upperCase(columnName));
-                fieldList.add(item);
-            }
-            data.put("fieldList", fieldList);
-            String outputPath = StringUtils.joinWith(
-                            File.separator, distPath, Strings.CS.replace(domain_pkg, ".", File.separator), domainName)
-                    + ".java";
-            FileUtils.forceMkdirParent(new File(outputPath));
-            if (FileUtil.isExistsAndNotDirectory(new File(outputPath).toPath(), false)) {
-                String content = IoUtil.readUtf8(new FileInputStream(new File(outputPath)));
-                String oldC = StringUtils.substringBetween(content, customize_begin, customize_end);
-                oldC = StringUtils.trim(oldC);
-                data.put("customize_content", oldC);
-            } else {
-                data.put("customize_content", "");
-            }
-
-            try (Writer out = new OutputStreamWriter(new FileOutputStream(outputPath), "UTF-8")) {
-                modelTpl.process(data, out);
-            }
-
-            String mapper_outputPath = StringUtils.joinWith(
-                            File.separator, distPath, Strings.CS.replace(mapper_pkg, ".", File.separator), mapperName)
-                    + ".java";
-
-            FileUtils.forceMkdirParent(new File(mapper_outputPath));
-            if (FileUtil.isExistsAndNotDirectory(new File(mapper_outputPath).toPath(), false)) {
-                String content = IoUtil.readUtf8(new FileInputStream(new File(mapper_outputPath)));
-                String oldC = StringUtils.substringBetween(content, customize_begin, customize_end);
-                oldC = StringUtils.trim(oldC);
-                data.put("customize_content", oldC);
-            } else {
-                data.put("customize_content", "");
-            }
-
-            try (Writer out = new OutputStreamWriter(new FileOutputStream(mapper_outputPath), "UTF-8")) {
-                mapperTpl.process(data, out);
-            }
+            return 0;
         }
-
-        return 0;
     }
 }
