@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter
+    xmlns="https://github.com/spotbugs/filter/3.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://github.com/spotbugs/filter/3.0.0 https://raw.githubusercontent.com/spotbugs/spotbugs/4.9.3/spotbugs/etc/findbugsfilter.xsd">
+
+    <!-- Model/DTO classes expose internal representation by design -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Unread public fields in service result/summary classes -->
+    <Match>
+        <Bug pattern="URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD"/>
+    </Match>
+
+    <!-- Main class System.exit is intentional -->
+    <Match>
+        <Class name="com.dyrnq.dbops.Main"/>
+        <Bug pattern="DM_EXIT"/>
+    </Match>
+
+    <!-- Legacy methods intentionally throw RuntimeException -->
+    <Match>
+        <Bug pattern="THROWS_METHOD_THROWS_RUNTIMEEXCEPTION"/>
+    </Match>
+
+    <!-- Legacy exception handling patterns -->
+    <Match>
+        <Bug pattern="THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION"/>
+    </Match>
+
+    <!-- Uncalled private methods (may be used via reflection or left for future) -->
+    <Match>
+        <Bug pattern="UPM_UNCALLED_PRIVATE_METHOD"/>
+    </Match>
+
+    <!-- mkdirs return value ignored (common pattern, acceptable) -->
+    <Match>
+        <Bug pattern="RV_RETURN_VALUE_IGNORED_BAD_PRACTICE"/>
+    </Match>
+
+    <!-- WoodGen opens Connection via metaData - uses short-lived pattern -->
+    <Match>
+        <Class name="com.dyrnq.dbops.command.WoodGen"/>
+        <Bug pattern="ODR_OPEN_DATABASE_RESOURCE"/>
+    </Match>
+</FindBugsFilter>
