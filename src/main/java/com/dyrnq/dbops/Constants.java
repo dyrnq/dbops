@@ -1,5 +1,5 @@
 package com.dyrnq.dbops;
 
 public interface Constants {
-    String VERSION="v1.1.6";
+    String VERSION = "v1.1.8";
 }

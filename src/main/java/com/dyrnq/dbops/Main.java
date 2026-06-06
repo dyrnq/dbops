@@ -3,6 +3,7 @@ package com.dyrnq.dbops;
 import cn.hutool.core.io.FileUtil;
 import com.dyrnq.dbops.command.*;
 import com.dyrnq.dbops.command.Process;
+import java.io.File;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RegExUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -11,25 +12,22 @@ import org.apache.commons.lang3.SystemUtils;
 import org.noear.solon.Solon;
 import picocli.CommandLine;
 
-import java.io.File;
-
 @picocli.CommandLine.Command(
         subcommands = {
-                Exec.class,
-                Var.class,
-                Version.class,
-                BCryptPassword.class,
-                SchemaDiff.class,
-                SchemaToDoris.class,
-                WoodGen.class,
-                Info.class,
-                Process.class,
-                Tables.class,
-                Db.class
+            Exec.class,
+            Var.class,
+            Version.class,
+            BCryptPassword.class,
+            SchemaDiff.class,
+            SchemaToDoris.class,
+            WoodGen.class,
+            Info.class,
+            Process.class,
+            Tables.class,
+            Db.class
         },
         mixinStandardHelpOptions = true,
-        showDefaultValues = true
-)
+        showDefaultValues = true)
 @Slf4j
 public class Main implements Runnable {
     public static String homeAbsolutePath(String home, String appName) {
@@ -51,7 +49,7 @@ public class Main implements Runnable {
 
         Solon.start(Main.class, args, app -> {
             String homeDir = homeAbsolutePath("", "." + app.cfg().appName());
-            String[] files = new String[]{"config.yaml", "config.yml"};
+            String[] files = new String[] {"config.yaml", "config.yml"};
             for (String file : files) {
                 String yamlFile = StringUtils.joinWith(File.separator, homeDir, file);
                 if (FileUtil.exist(yamlFile)) {
@@ -59,7 +57,6 @@ public class Main implements Runnable {
                     app.cfg().loadAdd(yamlFile);
                 }
             }
-
         });
 
         Main app = new Main();
@@ -68,15 +65,8 @@ public class Main implements Runnable {
         int code = cmd.execute(args);
 
         System.exit(code);
-        Solon.stop(0);
-
-
     }
-
 
     @Override
-    public void run() {
-
-    }
-
+    public void run() {}
 }

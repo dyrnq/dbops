@@ -6,13 +6,6 @@ import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Strings;
-import org.noear.solon.data.sql.SqlUtils;
-import picocli.CommandLine;
-
 import java.io.*;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -21,45 +14,86 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
+import org.noear.solon.data.sql.SqlUtils;
+import picocli.CommandLine;
 
 @CommandLine.Command(
         mixinStandardHelpOptions = true,
         showDefaultValues = true,
-        name = "wood", aliases = {"gen"}, description = "Wood gen <https://gitee.com/noear/wood>")
+        name = "wood",
+        aliases = {"gen"},
+        description = "Wood gen <https://gitee.com/noear/wood>")
 @Slf4j
 public class WoodGen extends CommonOptions implements Callable<Integer> {
 
     private static final Pattern LOWER_CASE = Pattern.compile("[a-z]");
     private static final String DEFAULT_DOMAIN_SUBPACKAGE_NAME = "model";
     private static final String DEFAULT_MAPPER_SUBPACKAGE_NAME = "dso";
-    @CommandLine.Option(names = {"--package-name", "-p"}, description = "package name", defaultValue = "com.example")
+
+    @CommandLine.Option(
+            names = {"--package-name", "-p"},
+            description = "package name",
+            defaultValue = "com.example")
     String package_name;
-    @CommandLine.Option(names = {"--domain-package-name", "--domain-pkg-name", "-dp"}, description = "domain package name")
+
+    @CommandLine.Option(
+            names = {"--domain-package-name", "--domain-pkg-name", "-dp"},
+            description = "domain package name")
     String domain_package_name;
-    @CommandLine.Option(names = {"--mapper-package-name", "--mapper-pkg-name", "-mp"}, description = "mapper package name")
+
+    @CommandLine.Option(
+            names = {"--mapper-package-name", "--mapper-pkg-name", "-mp"},
+            description = "mapper package name")
     String mapper_package_name;
 
-    @CommandLine.Option(names = {"--template-dir", "-T"}, description = "templateDir", defaultValue = "src/main/resources/templates")
+    @CommandLine.Option(
+            names = {"--template-dir", "-T"},
+            description = "templateDir",
+            defaultValue = "src/main/resources/templates")
     String templateDir;
 
-    @CommandLine.Option(names = {"--dist-dir", "-D"}, description = "distDir", defaultValue = "src/main/java/")
+    @CommandLine.Option(
+            names = {"--dist-dir", "-D"},
+            description = "distDir",
+            defaultValue = "src/main/java/")
     String distDir;
 
-    @CommandLine.Option(names = {"--openapi", "--open", "-open"}, description = "openapi", defaultValue = "false")
+    @CommandLine.Option(
+            names = {"--openapi", "--open", "-open"},
+            description = "openapi",
+            defaultValue = "false")
     boolean openapi;
 
-    @CommandLine.Option(names = {"--customize-begin", "--begin", "-b"}, description = "distDir", defaultValue = "//Customize BEGIN")
+    @CommandLine.Option(
+            names = {"--customize-begin", "--begin", "-b"},
+            description = "distDir",
+            defaultValue = "//Customize BEGIN")
     String customize_begin;
 
-    @CommandLine.Option(names = {"--customize-end", "--end", "-e"}, description = "distDir", defaultValue = "//Customize END")
+    @CommandLine.Option(
+            names = {"--customize-end", "--end", "-e"},
+            description = "distDir",
+            defaultValue = "//Customize END")
     String customize_end;
+
     @CommandLine.Option(names = {"--solon"})
     boolean solon;
-    @CommandLine.Option(names = {"--skip-tables", "-k"}, arity = "1..*", description = "skip tables")
-    private String[] skipTables;
-    @CommandLine.Option(names = {"--extra-imports", "-i"}, arity = "1..*", description = "extra imports")
-    private String[] extraImports;
 
+    @CommandLine.Option(
+            names = {"--skip-tables", "-k"},
+            arity = "1..*",
+            description = "skip tables")
+    private String[] skipTables;
+
+    @CommandLine.Option(
+            names = {"--extra-imports", "-i"},
+            arity = "1..*",
+            description = "extra imports")
+    private String[] extraImports;
 
     public static String toCamelString(String name) {
         return toCamelString(name, false);
@@ -138,12 +172,8 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
             return "java.time.LocalDateTime";
         }
 
-
         return "String";
-
-
     }
-
 
     public Map<String, String> getTableCommentMap(String database) throws SQLException {
         String sql = "SELECT table_name,table_comment FROM information_schema.TABLES WHERE table_schema = ?";
@@ -157,28 +187,29 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
         return map;
     }
 
-
     public String getCurrentDatabase() throws SQLException {
         String sql = "SELECT DATABASE()";
         SqlUtils sqlUtils = SqlUtils.ofName(ds);
         return sqlUtils.sql(sql).queryValue();
     }
 
-
     @Override
     public Integer call() throws Exception {
 
-        String distPath = StrUtil.endWith(distDir, File.separator) ? distDir.substring(0, distDir.length() - 1) : distDir;
+        String distPath =
+                StrUtil.endWith(distDir, File.separator) ? distDir.substring(0, distDir.length() - 1) : distDir;
 
         Configuration cfg = new Configuration(Configuration.VERSION_2_3_31);
         cfg.setDirectoryForTemplateLoading(new File(templateDir));
         Template modelTpl = cfg.getTemplate("ModelClass.tpl");
         Template mapperTpl = cfg.getTemplate("MapperClass.tpl");
 
-
-        String domain_pkg = StrUtil.isBlank(domain_package_name) ? (package_name + "." + DEFAULT_DOMAIN_SUBPACKAGE_NAME) : domain_package_name;
-        String mapper_pkg = StrUtil.isBlank(mapper_package_name) ? (package_name + "." + DEFAULT_MAPPER_SUBPACKAGE_NAME) : mapper_package_name;
-
+        String domain_pkg = StrUtil.isBlank(domain_package_name)
+                ? (package_name + "." + DEFAULT_DOMAIN_SUBPACKAGE_NAME)
+                : domain_package_name;
+        String mapper_pkg = StrUtil.isBlank(mapper_package_name)
+                ? (package_name + "." + DEFAULT_MAPPER_SUBPACKAGE_NAME)
+                : mapper_package_name;
 
         Map<String, String> skipTablesMap = new LinkedHashMap<>();
         if (skipTables != null) {
@@ -191,7 +222,6 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
         SqlUtils sqlUtils = SqlUtils.ofName(ds);
         List<String> tableNames = sqlUtils.sql("SHOW TABLES").queryValueList();
 
-
         String schema = getCurrentDatabase();
 
         Map<String, String> tableCommentMap = getTableCommentMap(schema);
@@ -199,11 +229,10 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
         DatabaseMetaData metaData = sqlUtils.getDataSource().getConnection().getMetaData();
         for (String tableName : tableNames) {
             if (skipTablesMap.containsKey(tableName)) {
-                //System.out.printf("skip %s%n", tableName);
+                // System.out.printf("skip %s%n", tableName);
                 continue;
             }
             Map<String, Object> data = new HashMap<>();
-
 
             Set<String> primaryKeys = new HashSet<>();
 
@@ -238,20 +267,19 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
                 Collections.addAll(imports, extraImports);
             }
             if (!solon) {
-                //import org.springframework.beans.factory.annotation.Autowired;
-                //import org.springframework.stereotype.Component;
+                // import org.springframework.beans.factory.annotation.Autowired;
+                // import org.springframework.stereotype.Component;
                 imports.add("org.springframework.beans.factory.annotation.Autowired");
                 imports.add("org.springframework.stereotype.Component");
                 data.put("autowired", "@Autowired");
             } else {
-//                import org.noear.solon.annotation.Component;
-//                import org.noear.solon.annotation.Inject;
+                //                import org.noear.solon.annotation.Component;
+                //                import org.noear.solon.annotation.Inject;
                 imports.add("org.noear.solon.annotation.Component");
                 imports.add("org.noear.solon.annotation.Inject");
                 data.put("autowired", "@Inject");
             }
             data.put("imports", imports);
-
 
             String tableComment = "";
             try {
@@ -286,9 +314,9 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
                 fieldList.add(item);
             }
             data.put("fieldList", fieldList);
-            String outputPath = StringUtils.joinWith(File.separator, distPath
-                    , Strings.CS.replace(domain_pkg, ".", File.separator), domainName
-            ) + ".java";
+            String outputPath = StringUtils.joinWith(
+                            File.separator, distPath, Strings.CS.replace(domain_pkg, ".", File.separator), domainName)
+                    + ".java";
             FileUtils.forceMkdirParent(new File(outputPath));
             if (FileUtil.isExistsAndNotDirectory(new File(outputPath).toPath(), false)) {
                 String content = IoUtil.readUtf8(new FileInputStream(new File(outputPath)));
@@ -299,16 +327,13 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
                 data.put("customize_content", "");
             }
 
-
-            try (Writer out = new OutputStreamWriter(new FileOutputStream(outputPath))) {
+            try (Writer out = new OutputStreamWriter(new FileOutputStream(outputPath), "UTF-8")) {
                 modelTpl.process(data, out);
             }
 
-
-            String mapper_outputPath = StringUtils.joinWith(File.separator, distPath
-                    , Strings.CS.replace(mapper_pkg, ".", File.separator), mapperName
-            ) + ".java";
-
+            String mapper_outputPath = StringUtils.joinWith(
+                            File.separator, distPath, Strings.CS.replace(mapper_pkg, ".", File.separator), mapperName)
+                    + ".java";
 
             FileUtils.forceMkdirParent(new File(mapper_outputPath));
             if (FileUtil.isExistsAndNotDirectory(new File(mapper_outputPath).toPath(), false)) {
@@ -320,15 +345,11 @@ public class WoodGen extends CommonOptions implements Callable<Integer> {
                 data.put("customize_content", "");
             }
 
-            try (Writer out = new OutputStreamWriter(new FileOutputStream(mapper_outputPath))) {
+            try (Writer out = new OutputStreamWriter(new FileOutputStream(mapper_outputPath), "UTF-8")) {
                 mapperTpl.process(data, out);
             }
-
-
         }
-
 
         return 0;
     }
-
 }

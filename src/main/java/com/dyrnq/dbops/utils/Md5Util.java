@@ -1,11 +1,12 @@
 package com.dyrnq.dbops.utils;
 
-
 import java.security.MessageDigest;
 
 public class Md5Util {
 
-    private static final String[] HEX_DIGITS = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"};
+    private static final String[] HEX_DIGITS = {
+        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"
+    };
 
     private static String byteArrayToHexString(byte[] b) {
         StringBuilder resultSb = new StringBuilder();
@@ -30,10 +31,9 @@ public class Md5Util {
     public static String md5(String origin) {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
-            return byteArrayToHexString(md.digest(origin.getBytes()));
+            return byteArrayToHexString(md.digest(origin.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
         } catch (Exception e) {
             return null;
         }
     }
-
 }

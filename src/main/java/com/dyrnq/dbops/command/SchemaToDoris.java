@@ -4,14 +4,6 @@ import cn.hutool.db.dialect.DriverUtil;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.zaxxer.hikari.HikariDataSource;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.noear.snack4.ONode;
-import org.noear.solon.Solon;
-import org.noear.solon.data.sql.SqlUtils;
-import picocli.CommandLine;
-
-import javax.sql.DataSource;
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -19,38 +11,73 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
+import javax.sql.DataSource;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.noear.snack4.ONode;
+import org.noear.solon.Solon;
+import org.noear.solon.data.sql.SqlUtils;
+import picocli.CommandLine;
 
 @CommandLine.Command(
         mixinStandardHelpOptions = true,
         showDefaultValues = true,
-        name = "schema-to-doris", aliases = {"std"}, description = "SchemaToDoris")
+        name = "schema-to-doris",
+        aliases = {"std"},
+        description = "SchemaToDoris")
 @Slf4j
 public class SchemaToDoris implements Callable<Integer> {
-    @CommandLine.Option(names = {"-source-ds", "--source-ds", "-S"}, description = "source datasource name", defaultValue = "default")
+    @CommandLine.Option(
+            names = {"-source-ds", "--source-ds", "-S"},
+            description = "source datasource name",
+            defaultValue = "default")
     String sourceDatasource;
 
-    @CommandLine.Option(names = {"-target-ds", "--target-ds", "-T"}, description = "target datasource name", defaultValue = "default")
+    @CommandLine.Option(
+            names = {"-target-ds", "--target-ds", "-T"},
+            description = "target datasource name",
+            defaultValue = "default")
     String targetDatasource;
 
-    @CommandLine.Option(names = {"-source", "--source", "--source-schema"}, description = "source schema", defaultValue = "")
+    @CommandLine.Option(
+            names = {"-source", "--source", "--source-schema"},
+            description = "source schema",
+            defaultValue = "")
     String sourceSchema;
 
-    @CommandLine.Option(names = {"-target", "--target", "--target-schema"}, description = "target schema", defaultValue = "")
+    @CommandLine.Option(
+            names = {"-target", "--target", "--target-schema"},
+            description = "target schema",
+            defaultValue = "")
     String targetSchema;
 
-    @CommandLine.Option(names = {"-t", "--type"}, description = "object type to convert (olap, odbc, jdbc, jdbc_catalog)", defaultValue = "olap")
+    @CommandLine.Option(
+            names = {"-t", "--type"},
+            description = "object type to convert (olap, odbc, jdbc, jdbc_catalog)",
+            defaultValue = "olap")
     String type;
 
-    @CommandLine.Option(names = {"-F", "--format"}, description = "output format (json, text)", defaultValue = "text")
+    @CommandLine.Option(
+            names = {"-F", "--format"},
+            description = "output format (json, text)",
+            defaultValue = "text")
     String format;
 
-    @CommandLine.Option(names = {"--include-table"}, description = "regex pattern to include tables for conversion")
+    @CommandLine.Option(
+            names = {"--include-table"},
+            description = "regex pattern to include tables for conversion")
     String includeTablePattern;
 
-    @CommandLine.Option(names = {"--exclude-table"}, description = "regex pattern to exclude tables from conversion")
+    @CommandLine.Option(
+            names = {"--exclude-table"},
+            description = "regex pattern to exclude tables from conversion")
     String excludeTablePattern;
 
-    @CommandLine.Option(names = {"--driver-url", "--jdbc-driver-url"}, description = "", defaultValue = "https://repo.huaweicloud.com/repository/maven/com/mysql/mysql-connector-j/8.4.0/mysql-connector-j-8.4.0.jar")
+    @CommandLine.Option(
+            names = {"--driver-url", "--jdbc-driver-url"},
+            description = "",
+            defaultValue =
+                    "https://repo.huaweicloud.com/repository/maven/com/mysql/mysql-connector-j/8.4.0/mysql-connector-j-8.4.0.jar")
     String jdbcDriverUrl;
 
     @CommandLine.Option(names = {"--target-table-prefix", "--table-prefix"})
@@ -59,10 +86,14 @@ public class SchemaToDoris implements Callable<Integer> {
     @CommandLine.Option(names = {"--target-table-suffix", "--table-suffix"})
     String targetTableSuffix;
 
-    @CommandLine.Option(names = {"--jdbc-catalog-name", "--jdbc-catalog", "-jc"}, defaultValue = "jdbc_catalog_$sourceSchema")
+    @CommandLine.Option(
+            names = {"--jdbc-catalog-name", "--jdbc-catalog", "-jc"},
+            defaultValue = "jdbc_catalog_$sourceSchema")
     String jdbcCatalogName;
 
-    @CommandLine.Option(names = {"--jdbc-resource-name", "--jdbc-resource", "-jr"}, defaultValue = "jdbc_resource_$sourceSchema")
+    @CommandLine.Option(
+            names = {"--jdbc-resource-name", "--jdbc-resource", "-jr"},
+            defaultValue = "jdbc_resource_$sourceSchema")
     String jdbcResourceName;
 
     private String getJc() {
@@ -88,12 +119,10 @@ public class SchemaToDoris implements Callable<Integer> {
                 } catch (IllegalAccessException e) {
                     // Handle exception
                 }
-
             }
         }
         return template;
     }
-
 
     @Override
     public Integer call() throws Exception {
@@ -105,7 +134,8 @@ public class SchemaToDoris implements Callable<Integer> {
             if (sourceSchema == null || sourceSchema.isEmpty()) {
                 sourceSchema = getDatabaseName(sourceSqlUtils);
                 if (sourceSchema == null || sourceSchema.isEmpty()) {
-                    throw new IllegalArgumentException("Source schema is not specified and cannot be determined from the datasource");
+                    throw new IllegalArgumentException(
+                            "Source schema is not specified and cannot be determined from the datasource");
                 }
             }
 
@@ -184,7 +214,8 @@ public class SchemaToDoris implements Callable<Integer> {
         return filtered;
     }
 
-    private List<String> generateOlapTables(SqlUtils sourceSqlUtils, String sourceSchema, List<Map<String, String>> tables) throws Exception {
+    private List<String> generateOlapTables(
+            SqlUtils sourceSqlUtils, String sourceSchema, List<Map<String, String>> tables) throws Exception {
         List<String> statements = new ArrayList<>();
 
         for (Map<String, String> table : tables) {
@@ -202,7 +233,8 @@ public class SchemaToDoris implements Callable<Integer> {
         return statements;
     }
 
-    private List<String> generateExternalOdbcTables(SqlUtils sourceSqlUtils, String sourceSchema, List<Map<String, String>> tables) throws Exception {
+    private List<String> generateExternalOdbcTables(
+            SqlUtils sourceSqlUtils, String sourceSchema, List<Map<String, String>> tables) throws Exception {
         List<String> statements = new ArrayList<>();
 
         // Get connection info for ODBC external table
@@ -215,7 +247,8 @@ public class SchemaToDoris implements Callable<Integer> {
             // Apply table prefix and suffix if specified
             String targetTableName = targetTableName(tableName);
 
-            String dorisTableName = StringUtils.isBlank(targetSchema) ? targetTableName : targetSchema + "." + targetTableName;
+            String dorisTableName =
+                    StringUtils.isBlank(targetSchema) ? targetTableName : targetSchema + "." + targetTableName;
 
             String dorisStatement = generateOdbcExternalTable(sourceSchema, tableName, dorisTableName, connectionInfo);
             statements.add(dorisStatement);
@@ -226,13 +259,13 @@ public class SchemaToDoris implements Callable<Integer> {
 
     // Apply table prefix and suffix if specified
     private String targetTableName(String tableName) {
-        return
-                (StringUtils.isNoneBlank(targetTablePrefix) ? targetTablePrefix : "") +
-                        tableName +
-                        (StringUtils.isNoneBlank(targetTableSuffix) ? targetTableSuffix : "");
+        return (StringUtils.isNoneBlank(targetTablePrefix) ? targetTablePrefix : "")
+                + tableName
+                + (StringUtils.isNoneBlank(targetTableSuffix) ? targetTableSuffix : "");
     }
 
-    private List<String> generateExternalJdbcTables(SqlUtils sourceSqlUtils, String sourceSchema, List<Map<String, String>> tables) throws Exception {
+    private List<String> generateExternalJdbcTables(
+            SqlUtils sourceSqlUtils, String sourceSchema, List<Map<String, String>> tables) throws Exception {
         List<String> statements = new ArrayList<>();
 
         // Get connection info for JDBC external table
@@ -250,7 +283,8 @@ public class SchemaToDoris implements Callable<Integer> {
             // Apply table prefix and suffix if specified
             String targetTableName = targetTableName(tableName);
 
-            String dorisTableName = StringUtils.isBlank(targetSchema) ? targetTableName : targetSchema + "." + targetTableName;
+            String dorisTableName =
+                    StringUtils.isBlank(targetSchema) ? targetTableName : targetSchema + "." + targetTableName;
             String dorisStatement = generateJdbcExternalTable(sourceSchema, tableName, dorisTableName, connectionInfo);
             statements.add(dorisStatement);
         }
@@ -258,7 +292,8 @@ public class SchemaToDoris implements Callable<Integer> {
         return statements;
     }
 
-    private List<String> generateJdbcCatalogStatements(SqlUtils sourceSqlUtils, String sourceSchema, List<Map<String, String>> tables) throws Exception {
+    private List<String> generateJdbcCatalogStatements(
+            SqlUtils sourceSqlUtils, String sourceSchema, List<Map<String, String>> tables) throws Exception {
         List<String> statements = new ArrayList<>();
 
         // Get connection info for JDBC catalog
@@ -274,7 +309,9 @@ public class SchemaToDoris implements Callable<Integer> {
         return statements;
     }
 
-    private String convertToDorisOlapTable(String mysqlCreateStatement, String mysqlTableName, String dorisSchema, String targetTableName) throws Exception {
+    private String convertToDorisOlapTable(
+            String mysqlCreateStatement, String mysqlTableName, String dorisSchema, String targetTableName)
+            throws Exception {
         try {
             // Process the MySQL statement to extract CREATE TABLE part
             String createTableStatement = extractCreateTableStatement(mysqlCreateStatement);
@@ -286,7 +323,8 @@ public class SchemaToDoris implements Callable<Integer> {
             createTableStatement = transformToDorisOlap(createTableStatement);
 
             // Replace identifiers and add IF NOT EXISTS
-            String dorisTableName = StringUtils.isBlank(dorisSchema) ? targetTableName : dorisSchema + "." + targetTableName;
+            String dorisTableName =
+                    StringUtils.isBlank(dorisSchema) ? targetTableName : dorisSchema + "." + targetTableName;
             createTableStatement = replaceTableNames(createTableStatement, mysqlTableName, dorisTableName);
 
             // Apply type conversions
@@ -332,12 +370,12 @@ public class SchemaToDoris implements Callable<Integer> {
 
         for (String line : lines) {
             // Skip constraint and key lines
-            if (!line.trim().startsWith("  CON") &&
-                    !line.trim().startsWith("  KEY") &&
-                    !line.trim().startsWith("PRIMARY KEY") &&
-                    !line.trim().startsWith("UNIQUE KEY") &&
-                    !line.trim().startsWith("KEY") &&
-                    !line.trim().startsWith("CONSTRAINT")) {
+            if (!line.trim().startsWith("  CON")
+                    && !line.trim().startsWith("  KEY")
+                    && !line.trim().startsWith("PRIMARY KEY")
+                    && !line.trim().startsWith("UNIQUE KEY")
+                    && !line.trim().startsWith("KEY")
+                    && !line.trim().startsWith("CONSTRAINT")) {
                 cleanedLines.add(line);
             }
         }
@@ -380,8 +418,8 @@ public class SchemaToDoris implements Callable<Integer> {
                 transformedLines.add("\"replication_allocation\" = \"tag.location.default: 3\"");
                 transformedLines.add(");");
                 engineLineFound = true;
-//                // Don't add the ENGINE line or anything after it
-//                break;
+                //                // Don't add the ENGINE line or anything after it
+                //                break;
             } else if (!engineLineFound) {
                 transformedLines.add(line);
             }
@@ -409,7 +447,8 @@ public class SchemaToDoris implements Callable<Integer> {
     private String replaceTableNames(String createTableStatement, String mysqlTableName, String dorisTableName) {
         // Replace CREATE TABLE `table_name` with CREATE TABLE IF NOT EXISTS `db`.`table_name`
         String dorisTableFormatted = dorisTableName.replace(".", "`.`");
-        return createTableStatement.replaceAll("TABLE `" + mysqlTableName + "`", "TABLE IF NOT EXISTS `" + dorisTableFormatted + "`");
+        return createTableStatement.replaceAll(
+                "TABLE `" + mysqlTableName + "`", "TABLE IF NOT EXISTS `" + dorisTableFormatted + "`");
     }
 
     private String convertMysqlTypes(String content) {
@@ -427,15 +466,21 @@ public class SchemaToDoris implements Callable<Integer> {
         // 移除所有形式的 ON UPDATE CURRENT_TIMESTAMP，包括带参数和不带参数的
         content = content.replaceAll("(?i)\\s+ON UPDATE CURRENT_TIMESTAMP(?:\\([^)]*\\))?", "");
         // 特别处理 DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP 组合
-        content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+CURRENT_TIMESTAMP(?:\\([^)]*\\))?\\s+ON UPDATE CURRENT_TIMESTAMP(?:\\([^)]*\\))?", "$1 DEFAULT CURRENT_TIMESTAMP");
+        content = content.replaceAll(
+                "(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+CURRENT_TIMESTAMP(?:\\([^)]*\\))?\\s+ON UPDATE CURRENT_TIMESTAMP(?:\\([^)]*\\))?",
+                "$1 DEFAULT CURRENT_TIMESTAMP");
         // 特别处理 DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP 组合
-        content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+NULL\\s+ON UPDATE CURRENT_TIMESTAMP(?:\\([^)]*\\))?", "$1 DEFAULT NULL");
+        content = content.replaceAll(
+                "(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+NULL\\s+ON UPDATE CURRENT_TIMESTAMP(?:\\([^)]*\\))?",
+                "$1 DEFAULT NULL");
 
         content = content.replaceAll("CHARACTER SET utf8mb4 COLLATE utf8mb4_bin", "");
         content = content.replaceAll("DEFAULT '0000-00-00 00:00:00'", "DEFAULT '2000-01-01 00:00:00'");
 
         // Handle DEFAULT CURRENT_TIMESTAMP - only for datetime columns
-        content = content.replaceAll("(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+CURRENT_TIMESTAMP(?:\\([^)]*\\))?", "$1 DEFAULT CURRENT_TIMESTAMP");
+        content = content.replaceAll(
+                "(?i)(datetime\\(\\d+\\)|datetime)\\s+DEFAULT\\s+CURRENT_TIMESTAMP(?:\\([^)]*\\))?",
+                "$1 DEFAULT CURRENT_TIMESTAMP");
 
         content = content.replaceAll("DEFAULT b", "DEFAULT");
         content = content.replaceAll("DEFAULT (\\-?[0-9]+(\\.[0-9]+)?)", "DEFAULT '$1'");
@@ -528,7 +573,8 @@ public class SchemaToDoris implements Callable<Integer> {
         return result;
     }
 
-    private String generateOdbcExternalTable(String sourceSchema, String sourceTable, String dorisTable, Map<String, String> connectionInfo) {
+    private String generateOdbcExternalTable(
+            String sourceSchema, String sourceTable, String dorisTable, Map<String, String> connectionInfo) {
         StringBuilder sb = new StringBuilder();
 
         // Get connection details
@@ -538,11 +584,14 @@ public class SchemaToDoris implements Callable<Integer> {
         String password = connectionInfo.get("password");
         String driver = "MySQL"; // Default driver name
 
-        sb.append("CREATE TABLE IF NOT EXISTS `").append(dorisTable.replace(".", "`.`")).append("` (\n");
+        sb.append("CREATE TABLE IF NOT EXISTS `")
+                .append(dorisTable.replace(".", "`.`"))
+                .append("` (\n");
 
         // Add columns based on actual table schema
         try {
-            List<Map<String, String>> columns = getColumns(SqlUtils.ofName(sourceDatasource), sourceSchema, sourceTable);
+            List<Map<String, String>> columns =
+                    getColumns(SqlUtils.ofName(sourceDatasource), sourceSchema, sourceTable);
             for (int i = 0; i < columns.size(); i++) {
                 Map<String, String> column = columns.get(i);
                 String columnName = column.get("COLUMN_NAME");
@@ -627,7 +676,9 @@ public class SchemaToDoris implements Callable<Integer> {
                 }
                 if (!currentDb.equals(sourceSchema)) {
                     // Replace the database part in jdbcUrl
-                    String newJdbcUrl = jdbcUrl.replace("/" + dbPart, "/" + sourceSchema + (dbPart.contains("?") ? dbPart.substring(dbPart.indexOf("?")) : ""));
+                    String newJdbcUrl = jdbcUrl.replace(
+                            "/" + dbPart,
+                            "/" + sourceSchema + (dbPart.contains("?") ? dbPart.substring(dbPart.indexOf("?")) : ""));
                     jdbcUrl = newJdbcUrl;
                 }
             }
@@ -653,19 +704,6 @@ public class SchemaToDoris implements Callable<Integer> {
         String user = connectionInfo.get("user");
         String password = connectionInfo.get("password");
         String jdbcUrl = connectionInfo.get("jdbcUrl");
-        // Extract database name from jdbcUrl for catalog
-        String databaseName = "information_schema"; // Default
-        if (jdbcUrl != null && jdbcUrl.contains("/")) {
-            String[] parts = jdbcUrl.split("/");
-            if (parts.length > 0) {
-                String dbPart = parts[parts.length - 1];
-                if (dbPart.contains("?")) {
-                    databaseName = dbPart.substring(0, dbPart.indexOf("?"));
-                } else {
-                    databaseName = dbPart;
-                }
-            }
-        }
         String driverUrl = this.jdbcDriverUrl;
         String driverClass = connectionInfo.get("driverClass");
         String catalogName = getJc(); // Default catalog name
@@ -681,7 +719,9 @@ public class SchemaToDoris implements Callable<Integer> {
                 }
                 if (!currentDb.equals(sourceSchema)) {
                     // Replace the database part in jdbcUrl
-                    String newJdbcUrl = jdbcUrl.replace("/" + dbPart, "/" + sourceSchema + (dbPart.contains("?") ? dbPart.substring(dbPart.indexOf("?")) : ""));
+                    String newJdbcUrl = jdbcUrl.replace(
+                            "/" + dbPart,
+                            "/" + sourceSchema + (dbPart.contains("?") ? dbPart.substring(dbPart.indexOf("?")) : ""));
                     jdbcUrl = newJdbcUrl;
                 }
             }
@@ -700,7 +740,8 @@ public class SchemaToDoris implements Callable<Integer> {
         return sb.toString();
     }
 
-    private String generateJdbcExternalTable(String sourceSchema, String sourceTable, String dorisTable, Map<String, String> connectionInfo) {
+    private String generateJdbcExternalTable(
+            String sourceSchema, String sourceTable, String dorisTable, Map<String, String> connectionInfo) {
         StringBuilder sb = new StringBuilder();
         String resourceName = getJr();
         String dorisTableFormatted = dorisTable.replace(".", "`.`");
@@ -708,7 +749,8 @@ public class SchemaToDoris implements Callable<Integer> {
 
         // Add columns based on actual table schema
         try {
-            List<Map<String, String>> columns = getColumns(SqlUtils.ofName(sourceDatasource), sourceSchema, sourceTable);
+            List<Map<String, String>> columns =
+                    getColumns(SqlUtils.ofName(sourceDatasource), sourceSchema, sourceTable);
             for (int i = 0; i < columns.size(); i++) {
                 Map<String, String> column = columns.get(i);
                 String columnName = column.get("COLUMN_NAME");
@@ -821,10 +863,11 @@ public class SchemaToDoris implements Callable<Integer> {
             case "datetime", "timestamp" -> "datetime";
             case "char" -> "char(1)";
             case "varchar" -> "varchar(255)";
-//            case "tinytext", "text", "mediumtext", "longtext" -> "varchar(65533)";
-//            case "binary", "varbinary", "tinyblob", "blob", "mediumblob", "longblob" -> "varchar(65533)";
-//            case "enum", "set" -> "varchar(65533)";
-//            case "json" -> "varchar(65533)";
+                //            case "tinytext", "text", "mediumtext", "longtext" -> "varchar(65533)";
+                //            case "binary", "varbinary", "tinyblob", "blob", "mediumblob", "longblob" ->
+                // "varchar(65533)";
+                //            case "enum", "set" -> "varchar(65533)";
+                //            case "json" -> "varchar(65533)";
             default -> "varchar(65533)";
         };
     }
@@ -851,7 +894,7 @@ public class SchemaToDoris implements Callable<Integer> {
 
                 String driverClass = DriverUtil.identifyDriver(conn);
                 connectionInfo.put("driverClass", driverClass);
-//                connectionInfo.put("user", metaData.getUserName());
+                //                connectionInfo.put("user", metaData.getUserName());
             }
             if (dataSource instanceof HikariDataSource hikariDataSource) {
                 connectionInfo.put("password", hikariDataSource.getPassword());
@@ -888,10 +931,10 @@ public class SchemaToDoris implements Callable<Integer> {
     }
 
     private List<Map<String, String>> getColumns(SqlUtils sqlUtils, String schema, String table) throws Exception {
-        String sql = "SELECT COLUMN_NAME, DATA_TYPE, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_COMMENT " +
-                "FROM information_schema.COLUMNS " +
-                "WHERE TABLE_SCHEMA = '" + schema + "' AND TABLE_NAME = '" + table + "' " +
-                "ORDER BY ORDINAL_POSITION";
+        String sql = "SELECT COLUMN_NAME, DATA_TYPE, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_COMMENT "
+                + "FROM information_schema.COLUMNS "
+                + "WHERE TABLE_SCHEMA = '"
+                + schema + "' AND TABLE_NAME = '" + table + "' " + "ORDER BY ORDINAL_POSITION";
 
         List<String> result = sqlUtils.sql(sql).queryRowList(String.class);
         return parseResult(result);
