@@ -2,38 +2,62 @@ package com.dyrnq.dbops.command;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.noear.snack4.ONode;
 import org.noear.solon.data.sql.SqlUtils;
 import picocli.CommandLine;
 
-import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.stream.Collectors;
-
 @CommandLine.Command(
         mixinStandardHelpOptions = true,
         showDefaultValues = true,
-        name = "schema-diff", aliases = {"sd"}, description = "SchemaDiff")
+        name = "schema-diff",
+        aliases = {"sd"},
+        description = "SchemaDiff")
 @Slf4j
 public class SchemaDiff implements Callable<Integer> {
-    @CommandLine.Option(names = {"-source-ds", "--source-ds", "-S"}, description = "source datasource name", defaultValue = "default")
+    @CommandLine.Option(
+            names = {"-source-ds", "--source-ds", "-S"},
+            description = "source datasource name",
+            defaultValue = "default")
     String sourceDatasource;
-    @CommandLine.Option(names = {"-target-ds", "--target-ds", "-T"}, description = "target datasource name", defaultValue = "default")
+
+    @CommandLine.Option(
+            names = {"-target-ds", "--target-ds", "-T"},
+            description = "target datasource name",
+            defaultValue = "default")
     String targetDatasource;
 
-    @CommandLine.Option(names = {"-source", "--source", "--source-schema"}, description = "source schema", defaultValue = "")
+    @CommandLine.Option(
+            names = {"-source", "--source", "--source-schema"},
+            description = "source schema",
+            defaultValue = "")
     String sourceSchema;
-    @CommandLine.Option(names = {"-target", "--target", "--target-schema"}, description = "target schema", defaultValue = "")
+
+    @CommandLine.Option(
+            names = {"-target", "--target", "--target-schema"},
+            description = "target schema",
+            defaultValue = "")
     String targetSchema;
 
-    @CommandLine.Option(names = {"-t", "--type"}, description = "object type to compare (table, view, procedure, function, trigger, event)", defaultValue = "table")
+    @CommandLine.Option(
+            names = {"-t", "--type"},
+            description = "object type to compare (table, view, procedure, function, trigger, event)",
+            defaultValue = "table")
     String type;
 
-    @CommandLine.Option(names = {"-F", "--format"}, description = "output format (json, text)", defaultValue = "text")
+    @CommandLine.Option(
+            names = {"-F", "--format"},
+            description = "output format (json, text)",
+            defaultValue = "text")
     String format;
 
-    @CommandLine.Option(names = {"-d", "--drop"}, description = "include drop statements for objects only in target", defaultValue = "false")
+    @CommandLine.Option(
+            names = {"-d", "--drop"},
+            description = "include drop statements for objects only in target",
+            defaultValue = "false")
     boolean includeDrop;
 
     @Override
@@ -49,14 +73,16 @@ public class SchemaDiff implements Callable<Integer> {
             if (sourceSchema == null || sourceSchema.isEmpty()) {
                 sourceSchema = getDatabaseName(sourceSqlUtils);
                 if (sourceSchema == null || sourceSchema.isEmpty()) {
-                    throw new IllegalArgumentException("Source schema is not specified and cannot be determined from the datasource");
+                    throw new IllegalArgumentException(
+                            "Source schema is not specified and cannot be determined from the datasource");
                 }
             }
 
             if (targetSchema == null || targetSchema.isEmpty()) {
                 targetSchema = getDatabaseName(targetSqlUtils);
                 if (targetSchema == null || targetSchema.isEmpty()) {
-                    throw new IllegalArgumentException("Target schema is not specified and cannot be determined from the datasource");
+                    throw new IllegalArgumentException(
+                            "Target schema is not specified and cannot be determined from the datasource");
                 }
             }
 
@@ -99,22 +125,22 @@ public class SchemaDiff implements Callable<Integer> {
         }
     }
 
-    private void compareTables(SqlUtils sourceSqlUtils, SqlUtils targetSqlUtils, String sourceSchema, String targetSchema) throws Exception {
+    private void compareTables(
+            SqlUtils sourceSqlUtils, SqlUtils targetSqlUtils, String sourceSchema, String targetSchema)
+            throws Exception {
         log.info("Comparing tables between source schema: {} and target schema: {}", sourceSchema, targetSchema);
 
         // Get tables from source
         List<Map<String, String>> sourceTables = getTables(sourceSqlUtils, sourceSchema);
-        Set<String> sourceTableNames = sourceTables.stream()
-                .map(table -> table.get("TABLE_NAME"))
-                .collect(Collectors.toSet());
+        Set<String> sourceTableNames =
+                sourceTables.stream().map(table -> table.get("TABLE_NAME")).collect(Collectors.toSet());
 
         log.info("Source tables count: {}", sourceTableNames.size());
 
         // Get tables from target
         List<Map<String, String>> targetTables = getTables(targetSqlUtils, targetSchema);
-        Set<String> targetTableNames = targetTables.stream()
-                .map(table -> table.get("TABLE_NAME"))
-                .collect(Collectors.toSet());
+        Set<String> targetTableNames =
+                targetTables.stream().map(table -> table.get("TABLE_NAME")).collect(Collectors.toSet());
 
         log.info("Target tables count: {}", targetTableNames.size());
 
@@ -203,9 +229,9 @@ public class SchemaDiff implements Callable<Integer> {
 
                         // Compare all properties
                         String[] properties = {
-                                "DATA_TYPE", "IS_NULLABLE", "COLUMN_DEFAULT",
-                                "CHARACTER_SET_NAME", "COLLATION_NAME", "COLUMN_TYPE",
-                                "EXTRA", "COLUMN_KEY", "COLUMN_COMMENT"
+                            "DATA_TYPE", "IS_NULLABLE", "COLUMN_DEFAULT",
+                            "CHARACTER_SET_NAME", "COLLATION_NAME", "COLUMN_TYPE",
+                            "EXTRA", "COLUMN_KEY", "COLUMN_COMMENT"
                         };
 
                         for (String property : properties) {
@@ -236,7 +262,8 @@ public class SchemaDiff implements Callable<Integer> {
                             for (String columnName : colsOnlyInSource) {
                                 Map<String, String> col = sourceColumnMap.get(columnName);
                                 String columnDefinition = getColumnDefinition(col);
-                                System.out.println("ALTER TABLE `" + tableName + "` ADD COLUMN " + columnDefinition + ";");
+                                System.out.println(
+                                        "ALTER TABLE `" + tableName + "` ADD COLUMN " + columnDefinition + ";");
                             }
                         }
 
@@ -255,7 +282,8 @@ public class SchemaDiff implements Callable<Integer> {
                                 String columnName = entry.getKey();
                                 Map<String, String> sourceCol = sourceColumnMap.get(columnName);
                                 String columnDefinition = getColumnDefinition(sourceCol);
-                                System.out.println("ALTER TABLE `" + tableName + "` MODIFY COLUMN " + columnDefinition + ";");
+                                System.out.println(
+                                        "ALTER TABLE `" + tableName + "` MODIFY COLUMN " + columnDefinition + ";");
                             }
                         }
                         System.out.println();
@@ -335,9 +363,9 @@ public class SchemaDiff implements Callable<Integer> {
 
                         // Compare all properties
                         String[] properties = {
-                                "DATA_TYPE", "IS_NULLABLE", "COLUMN_DEFAULT",
-                                "CHARACTER_SET_NAME", "COLLATION_NAME", "COLUMN_TYPE",
-                                "EXTRA", "COLUMN_KEY", "COLUMN_COMMENT"
+                            "DATA_TYPE", "IS_NULLABLE", "COLUMN_DEFAULT",
+                            "CHARACTER_SET_NAME", "COLLATION_NAME", "COLUMN_TYPE",
+                            "EXTRA", "COLUMN_KEY", "COLUMN_COMMENT"
                         };
 
                         for (String property : properties) {
@@ -362,14 +390,16 @@ public class SchemaDiff implements Callable<Integer> {
                             for (String columnName : colsOnlyInSource) {
                                 Map<String, String> col = sourceColumnMap.get(columnName);
                                 String columnDefinition = getColumnDefinition(col);
-                                tableAlterStatements.add("ALTER TABLE `" + tableName + "` ADD COLUMN " + columnDefinition + ";");
+                                tableAlterStatements.add(
+                                        "ALTER TABLE `" + tableName + "` ADD COLUMN " + columnDefinition + ";");
                             }
                         }
 
                         // Columns only in target - DROP COLUMN statements
                         if (!colsOnlyInTarget.isEmpty()) {
                             for (String columnName : colsOnlyInTarget) {
-                                tableAlterStatements.add("ALTER TABLE `" + tableName + "` DROP COLUMN `" + columnName + "`;");
+                                tableAlterStatements.add(
+                                        "ALTER TABLE `" + tableName + "` DROP COLUMN `" + columnName + "`;");
                             }
                         }
 
@@ -379,7 +409,8 @@ public class SchemaDiff implements Callable<Integer> {
                                 String columnName = entry.getKey();
                                 Map<String, String> sourceCol = sourceColumnMap.get(columnName);
                                 String columnDefinition = getColumnDefinition(sourceCol);
-                                tableAlterStatements.add("ALTER TABLE `" + tableName + "` MODIFY COLUMN " + columnDefinition + ";");
+                                tableAlterStatements.add(
+                                        "ALTER TABLE `" + tableName + "` MODIFY COLUMN " + columnDefinition + ";");
                             }
                         }
 
@@ -396,18 +427,18 @@ public class SchemaDiff implements Callable<Integer> {
         }
     }
 
-    private void compareViews(SqlUtils sourceSqlUtils, SqlUtils targetSqlUtils, String sourceSchema, String targetSchema) throws Exception {
+    private void compareViews(
+            SqlUtils sourceSqlUtils, SqlUtils targetSqlUtils, String sourceSchema, String targetSchema)
+            throws Exception {
         // Get views from source
         List<Map<String, String>> sourceViews = getViews(sourceSqlUtils, sourceSchema);
-        Set<String> sourceViewNames = sourceViews.stream()
-                .map(view -> view.get("TABLE_NAME"))
-                .collect(Collectors.toSet());
+        Set<String> sourceViewNames =
+                sourceViews.stream().map(view -> view.get("TABLE_NAME")).collect(Collectors.toSet());
 
         // Get views from target
         List<Map<String, String>> targetViews = getViews(targetSqlUtils, targetSchema);
-        Set<String> targetViewNames = targetViews.stream()
-                .map(view -> view.get("TABLE_NAME"))
-                .collect(Collectors.toSet());
+        Set<String> targetViewNames =
+                targetViews.stream().map(view -> view.get("TABLE_NAME")).collect(Collectors.toSet());
 
         // Find differences
         Set<String> onlyInSource = new HashSet<>(sourceViewNames);
@@ -472,7 +503,9 @@ public class SchemaDiff implements Callable<Integer> {
         }
     }
 
-    private void compareRoutines(SqlUtils sourceSqlUtils, SqlUtils targetSqlUtils, String sourceSchema, String targetSchema) throws Exception {
+    private void compareRoutines(
+            SqlUtils sourceSqlUtils, SqlUtils targetSqlUtils, String sourceSchema, String targetSchema)
+            throws Exception {
         // Get routines from source
         List<Map<String, String>> sourceRoutines = getRoutines(sourceSqlUtils, sourceSchema, type);
         Set<String> sourceRoutineNames = sourceRoutines.stream()
@@ -548,7 +581,9 @@ public class SchemaDiff implements Callable<Integer> {
         }
     }
 
-    private void compareTriggers(SqlUtils sourceSqlUtils, SqlUtils targetSqlUtils, String sourceSchema, String targetSchema) throws Exception {
+    private void compareTriggers(
+            SqlUtils sourceSqlUtils, SqlUtils targetSqlUtils, String sourceSchema, String targetSchema)
+            throws Exception {
         // Get triggers from source
         List<Map<String, String>> sourceTriggers = getTriggers(sourceSqlUtils, sourceSchema);
         Set<String> sourceTriggerNames = sourceTriggers.stream()
@@ -624,18 +659,18 @@ public class SchemaDiff implements Callable<Integer> {
         }
     }
 
-    private void compareEvents(SqlUtils sourceSqlUtils, SqlUtils targetSqlUtils, String sourceSchema, String targetSchema) throws Exception {
+    private void compareEvents(
+            SqlUtils sourceSqlUtils, SqlUtils targetSqlUtils, String sourceSchema, String targetSchema)
+            throws Exception {
         // Get events from source
         List<Map<String, String>> sourceEvents = getEvents(sourceSqlUtils, sourceSchema);
-        Set<String> sourceEventNames = sourceEvents.stream()
-                .map(event -> event.get("EVENT_NAME"))
-                .collect(Collectors.toSet());
+        Set<String> sourceEventNames =
+                sourceEvents.stream().map(event -> event.get("EVENT_NAME")).collect(Collectors.toSet());
 
         // Get events from target
         List<Map<String, String>> targetEvents = getEvents(targetSqlUtils, targetSchema);
-        Set<String> targetEventNames = targetEvents.stream()
-                .map(event -> event.get("EVENT_NAME"))
-                .collect(Collectors.toSet());
+        Set<String> targetEventNames =
+                targetEvents.stream().map(event -> event.get("EVENT_NAME")).collect(Collectors.toSet());
 
         // Find differences
         Set<String> onlyInSource = new HashSet<>(sourceEventNames);
@@ -733,12 +768,14 @@ public class SchemaDiff implements Callable<Integer> {
         return "-- Could not retrieve CREATE statement for view " + viewName;
     }
 
-    private String getCreateRoutineStatement(SqlUtils sqlUtils, String schema, String routineName, String routineType) throws Exception {
+    private String getCreateRoutineStatement(SqlUtils sqlUtils, String schema, String routineName, String routineType)
+            throws Exception {
         String sql = "SHOW CREATE " + routineType.toUpperCase() + " `" + schema + "`.`" + routineName + "`";
         List<String> result = sqlUtils.sql(sql).queryRowList(String.class);
         if (result != null && !result.isEmpty()) {
             ONode o = ONode.ofJson(result.get(0));
-            return o.get("Create " + routineType.substring(0, 1).toUpperCase() + routineType.substring(1)).getString();
+            return o.get("Create " + routineType.substring(0, 1).toUpperCase() + routineType.substring(1))
+                    .getString();
         }
         return "-- Could not retrieve CREATE statement for " + routineType + " " + routineName;
     }
@@ -822,11 +859,11 @@ public class SchemaDiff implements Callable<Integer> {
     }
 
     private List<Map<String, String>> getColumns(SqlUtils sqlUtils, String schema, String table) throws Exception {
-        String sql = "SELECT COLUMN_NAME, COLUMN_TYPE, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT, " +
-                "CHARACTER_SET_NAME, COLLATION_NAME, EXTRA, COLUMN_KEY, COLUMN_COMMENT, ORDINAL_POSITION " +
-                "FROM information_schema.COLUMNS" +
-                " WHERE TABLE_SCHEMA = '" + schema + "' AND TABLE_NAME = '" + table + "'" +
-                " ORDER BY ORDINAL_POSITION";
+        String sql = "SELECT COLUMN_NAME, COLUMN_TYPE, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT, "
+                + "CHARACTER_SET_NAME, COLLATION_NAME, EXTRA, COLUMN_KEY, COLUMN_COMMENT, ORDINAL_POSITION "
+                + "FROM information_schema.COLUMNS"
+                + " WHERE TABLE_SCHEMA = '"
+                + schema + "' AND TABLE_NAME = '" + table + "'" + " ORDER BY ORDINAL_POSITION";
 
         List<String> result = sqlUtils.sql(sql).queryRowList(String.class);
         return parseResult(result);
@@ -844,9 +881,10 @@ public class SchemaDiff implements Callable<Integer> {
         return parseResult(result);
     }
 
-    private List<Map<String, String>> getRoutines(SqlUtils sqlUtils, String schema, String routineType) throws Exception {
-        String sql = "SELECT ROUTINE_NAME FROM information_schema.ROUTINES" +
-                " WHERE ROUTINE_TYPE = '" + routineType.toUpperCase() + "'";
+    private List<Map<String, String>> getRoutines(SqlUtils sqlUtils, String schema, String routineType)
+            throws Exception {
+        String sql = "SELECT ROUTINE_NAME FROM information_schema.ROUTINES" + " WHERE ROUTINE_TYPE = '"
+                + routineType.toUpperCase() + "'";
         if (schema != null && !schema.isEmpty()) {
             sql += " AND ROUTINE_SCHEMA = '" + schema + "'";
         } else {

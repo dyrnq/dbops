@@ -1,16 +1,17 @@
 package com.dyrnq.dbops.command;
 
 import cn.hutool.json.JSONUtil;
-import org.noear.solon.data.sql.SqlUtils;
-import picocli.CommandLine;
-
 import java.util.Map;
 import java.util.concurrent.Callable;
+import org.noear.solon.data.sql.SqlUtils;
+import picocli.CommandLine;
 
 @CommandLine.Command(
         mixinStandardHelpOptions = true,
         showDefaultValues = true,
-        name = "process", aliases = {"ps"}, description = "process list")
+        name = "process",
+        aliases = {"ps"},
+        description = "process list")
 public class Process extends CommonOptions implements Callable<Integer> {
     @CommandLine.Option(names = {"--full"})
     boolean full;

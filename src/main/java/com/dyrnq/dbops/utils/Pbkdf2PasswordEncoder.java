@@ -1,10 +1,10 @@
 package com.dyrnq.dbops.utils;
 
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 
 public class Pbkdf2PasswordEncoder {
 
@@ -59,8 +59,7 @@ public class Pbkdf2PasswordEncoder {
         int len = hex.length();
         byte[] data = new byte[len / 2];
         for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
-                                  + Character.digit(hex.charAt(i + 1), 16));
+            data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4) + Character.digit(hex.charAt(i + 1), 16));
         }
         return data;
     }
@@ -72,5 +71,4 @@ public class Pbkdf2PasswordEncoder {
         }
         return sb.toString();
     }
-
 }

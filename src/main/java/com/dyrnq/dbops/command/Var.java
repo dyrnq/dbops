@@ -2,20 +2,20 @@ package com.dyrnq.dbops.command;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import org.noear.snack4.ONode;
-import org.noear.solon.data.sql.SqlUtils;
-import picocli.CommandLine;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
-
+import org.noear.snack4.ONode;
+import org.noear.solon.data.sql.SqlUtils;
+import picocli.CommandLine;
 
 @CommandLine.Command(
         mixinStandardHelpOptions = true,
         showDefaultValues = true,
-        name = "variables", aliases = {"var", "vars"}, description = "Variables")
+        name = "variables",
+        aliases = {"var", "vars"},
+        description = "Variables")
 public class Var extends CommonOptions implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
@@ -26,11 +26,7 @@ public class Var extends CommonOptions implements Callable<Integer> {
         Map<String, String> mapS = new LinkedHashMap<>();
         listS.forEach(c -> {
             ONode o = ONode.ofJson(c);
-            mapS.put(
-                    o.get("Variable_name").getString(),
-                    o.get("Value").getString()
-            );
-
+            mapS.put(o.get("Variable_name").getString(), o.get("Value").getString());
         });
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         System.out.print(gson.toJson(mapS));

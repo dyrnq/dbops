@@ -1,15 +1,16 @@
 package com.dyrnq.dbops.command;
 
-import org.noear.solon.data.sql.SqlUtils;
-import picocli.CommandLine;
-
 import java.util.List;
 import java.util.concurrent.Callable;
+import org.noear.solon.data.sql.SqlUtils;
+import picocli.CommandLine;
 
 @CommandLine.Command(
         mixinStandardHelpOptions = true,
         showDefaultValues = true,
-        name = "exec", aliases = {"e"}, description = "Exec")
+        name = "exec",
+        aliases = {"e"},
+        description = "Exec")
 public class Exec extends CommonOptions implements Callable<Integer> {
 
     @CommandLine.Option(names = {"-A", "--always-list"})

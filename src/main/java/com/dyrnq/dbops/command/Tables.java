@@ -1,18 +1,18 @@
 package com.dyrnq.dbops.command;
 
 import cn.hutool.json.JSONUtil;
-import org.noear.solon.data.sql.SqlUtils;
-import picocli.CommandLine;
-
 import java.util.Map;
 import java.util.concurrent.Callable;
+import org.noear.solon.data.sql.SqlUtils;
+import picocli.CommandLine;
 
 @CommandLine.Command(
         mixinStandardHelpOptions = true,
         showDefaultValues = true,
-        name = "tables", aliases = {"t"}, description = "print tables info")
+        name = "tables",
+        aliases = {"t"},
+        description = "print tables info")
 public class Tables extends CommonOptions implements Callable<Integer> {
-
 
     @Override
     public Integer call() throws Exception {

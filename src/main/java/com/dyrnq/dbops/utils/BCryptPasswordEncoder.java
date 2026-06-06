@@ -1,7 +1,6 @@
 package com.dyrnq.dbops.utils;
 
 import cn.hutool.crypto.digest.BCrypt;
-
 import java.security.SecureRandom;
 
 public class BCryptPasswordEncoder {
