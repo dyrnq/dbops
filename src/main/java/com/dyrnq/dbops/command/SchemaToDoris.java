@@ -863,11 +863,11 @@ public class SchemaToDoris implements Callable<Integer> {
             case "datetime", "timestamp" -> "datetime";
             case "char" -> "char(1)";
             case "varchar" -> "varchar(255)";
-                //            case "tinytext", "text", "mediumtext", "longtext" -> "varchar(65533)";
-                //            case "binary", "varbinary", "tinyblob", "blob", "mediumblob", "longblob" ->
-                // "varchar(65533)";
-                //            case "enum", "set" -> "varchar(65533)";
-                //            case "json" -> "varchar(65533)";
+            //            case "tinytext", "text", "mediumtext", "longtext" -> "varchar(65533)";
+            //            case "binary", "varbinary", "tinyblob", "blob", "mediumblob", "longblob" ->
+            // "varchar(65533)";
+            //            case "enum", "set" -> "varchar(65533)";
+            //            case "json" -> "varchar(65533)";
             default -> "varchar(65533)";
         };
     }
